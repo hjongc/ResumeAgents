@@ -1,0 +1,54 @@
+{
+    "question": "원본 문항",
+    "experience_analysis": {
+        "candidate_experiences": [
+            {
+                "experience": "경험 설명",
+                "relevance_score": 85,
+                "relevance_reason": "관련성 이유",
+                "key_achievements": ["성과 1", "성과 2"],
+                "storytelling_potential": "스토리텔링 가능성"
+            }
+        ],
+        "experience_ranking": [
+            {
+                "rank": 1,
+                "experience": "가장 적합한 경험",
+                "reason": "선택 이유",
+                "utilization_strategy": "활용 전략"
+            }
+        ]
+    },
+    "strategic_guidance": {
+        "experience_selection": "경험 선택 가이드",
+        "achievement_emphasis": "성과 강조 방법",
+        "skill_demonstration": "스킬 보여주기 방법",
+        "narrative_structure": "내러티브 구조 제안"
+    },
+    "content_development": {
+        "experience_details": ["상세히 다룰 경험 1", "상세히 다룰 경험 2"],
+        "achievement_metrics": ["구체적 수치 1", "구체적 수치 2"],
+        "skill_examples": ["스킬 예시 1", "스킬 예시 2"],
+        "storytelling_elements": ["스토리텔링 요소 1", "스토리텔링 요소 2"]
+    },
+    "writing_guidance": {
+        "structure_recommendation": "구조 제안",
+        "content_organization": "내용 구성 방법",
+        "emphasis_strategies": ["강조 전략 1", "강조 전략 2"],
+        "flow_guidance": "흐름 가이드"
+    },
+    "improvement_suggestions": [
+        {
+            "area": "개선 영역",
+            "suggestion": "개선 제안",
+            "priority": "우선순위"
+        }
+    ],
+    "experience_gaps": [
+        {
+            "gap": "경험 부족 영역",
+            "compensation_strategy": "보완 전략"
+        }
+    ],
+    "guidance_summary": "경험 가이드 요약"
+} 

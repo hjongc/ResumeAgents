@@ -1,0 +1,62 @@
+{
+    "position_overview": "직무 개요",
+    "key_responsibilities": [
+        "주요 업무 1",
+        "주요 업무 2",
+        "주요 업무 3"
+    ],
+    "required_qualifications": {
+        "education": "학력 요구사항",
+        "experience": "경력 요구사항",
+        "skills": [
+            "필수 스킬 1",
+            "필수 스킬 2",
+            "필수 스킬 3"
+        ],
+        "certifications": [
+            "필요 자격증 1",
+            "필요 자격증 2"
+        ]
+    },
+    "preferred_qualifications": {
+        "experience": "우대 경력",
+        "skills": [
+            "우대 스킬 1",
+            "우대 스킬 2"
+        ],
+        "additional": [
+            "기타 우대사항 1",
+            "기타 우대사항 2"
+        ]
+    },
+    "job_requirements_analysis": {
+        "technical_requirements": [
+            "기술적 요구사항 1",
+            "기술적 요구사항 2"
+        ],
+        "soft_skills": [
+            "소프트 스킬 1",
+            "소프트 스킬 2"
+        ],
+        "experience_level": "요구 경력 수준",
+        "domain_knowledge": [
+            "도메인 지식 1",
+            "도메인 지식 2"
+        ]
+    },
+    "matching_keywords": [
+        "매칭 키워드 1",
+        "매칭 키워드 2",
+        "매칭 키워드 3"
+    ],
+    "difficulty_assessment": {
+        "overall_difficulty": "전체 난이도 (1-5)",
+        "technical_difficulty": "기술적 난이도 (1-5)",
+        "experience_barrier": "경력 진입 장벽 (1-5)"
+    },
+    "candidate_fit_analysis": "지원자 적합성 분석",
+    "strategic_insights": [
+        "전략적 인사이트 1",
+        "전략적 인사이트 2"
+    ]
+} 

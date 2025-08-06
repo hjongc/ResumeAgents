@@ -1,0 +1,81 @@
+{
+    "question": "원본 문항",
+    "writing_strategy": {
+        "overall_approach": "전체 접근 방법",
+        "narrative_strategy": "내러티브 전략",
+        "emotional_strategy": "감정적 전략",
+        "impact_strategy": "임팩트 전략"
+    },
+    "content_structure": {
+        "introduction": {
+            "purpose": "도입부 목적",
+            "key_elements": ["핵심 요소 1", "핵심 요소 2"],
+            "writing_tips": ["작성 팁 1", "작성 팁 2"],
+            "estimated_length": "예상 글자 수"
+        },
+        "main_body": {
+            "purpose": "본론 목적",
+            "sections": [
+                {
+                    "section": "섹션 1",
+                    "purpose": "목적",
+                    "key_points": ["핵심 포인트 1", "핵심 포인트 2"],
+                    "writing_tips": ["작성 팁 1", "작성 팁 2"],
+                    "estimated_length": "예상 글자 수"
+                },
+                {
+                    "section": "섹션 2",
+                    "purpose": "목적",
+                    "key_points": ["핵심 포인트 1", "핵심 포인트 2"],
+                    "writing_tips": ["작성 팁 1", "작성 팁 2"],
+                    "estimated_length": "예상 글자 수"
+                }
+            ]
+        },
+        "conclusion": {
+            "purpose": "결론 목적",
+            "key_elements": ["핵심 요소 1", "핵심 요소 2"],
+            "writing_tips": ["작성 팁 1", "작성 팁 2"],
+            "estimated_length": "예상 글자 수"
+        }
+    },
+    "narrative_flow": [
+        "스토리텔링 단계 1",
+        "스토리텔링 단계 2",
+        "스토리텔링 단계 3"
+    ],
+    "key_messages": [
+        "핵심 메시지 1",
+        "핵심 메시지 2",
+        "핵심 메시지 3"
+    ],
+    "writing_techniques": {
+        "hook_techniques": ["훅 기법 1", "훅 기법 2"],
+        "transition_techniques": ["전환 기법 1", "전환 기법 2"],
+        "emphasis_techniques": ["강조 기법 1", "강조 기법 2"],
+        "conclusion_techniques": ["결론 기법 1", "결론 기법 2"]
+    },
+    "style_guidance": {
+        "tone_recommendation": "어조 제안",
+        "language_style": "언어 스타일",
+        "formality_level": "격식 수준",
+        "personal_touch": "개인적 터치 방법"
+    },
+    "common_mistakes": [
+        "피해야 할 실수 1",
+        "피해야 할 실수 2",
+        "피해야 할 실수 3"
+    ],
+    "quality_checklist": [
+        "품질 체크 항목 1",
+        "품질 체크 항목 2",
+        "품질 체크 항목 3"
+    ],
+    "writing_timeline": {
+        "planning_phase": "계획 단계",
+        "drafting_phase": "초안 작성 단계",
+        "revision_phase": "수정 단계",
+        "finalization_phase": "완성 단계"
+    },
+    "guidance_summary": "작성 가이드 요약"
+} 

@@ -1,0 +1,17 @@
+# Core dependencies
+openai>=1.0.0
+langchain>=0.1.0
+langchain-openai>=0.0.5
+langgraph>=0.0.40
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+
+# Vector Database dependencies (optional but recommended)
+sentence-transformers>=2.2.0
+faiss-cpu>=1.7.0
+numpy>=1.21.0
+
+# Development dependencies
+pytest>=7.0.0
+black>=23.0.0
+flake8>=6.0.0 

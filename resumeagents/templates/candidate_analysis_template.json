@@ -1,0 +1,111 @@
+{
+    "candidate_profile": {
+        "background_summary": "지원자 배경 요약",
+        "career_progression": "경력 발전 과정",
+        "education_background": "학력 배경",
+        "core_competencies": [
+            "핵심 역량 1",
+            "핵심 역량 2",
+            "핵심 역량 3"
+        ]
+    },
+    "experience_analysis": {
+        "professional_experience": [
+            {
+                "company": "회사명",
+                "role": "역할",
+                "duration": "기간",
+                "key_achievements": [
+                    "주요 성과 1",
+                    "주요 성과 2"
+                ],
+                "skills_gained": [
+                    "습득 스킬 1",
+                    "습득 스킬 2"
+                ]
+            }
+        ],
+        "project_experience": [
+            {
+                "project": "프로젝트명",
+                "role": "역할",
+                "impact": "임팩트",
+                "technologies": [
+                    "기술 1",
+                    "기술 2"
+                ]
+            }
+        ],
+        "experience_strengths": [
+            "경험 강점 1",
+            "경험 강점 2"
+        ],
+        "experience_gaps": [
+            "경험 부족 영역 1",
+            "경험 부족 영역 2"
+        ]
+    },
+    "skill_assessment": {
+        "technical_skills": [
+            {
+                "skill": "기술명",
+                "proficiency": "숙련도 (1-5)",
+                "evidence": "근거"
+            }
+        ],
+        "soft_skills": [
+            {
+                "skill": "소프트 스킬",
+                "strength": "강도 (1-5)",
+                "evidence": "근거"
+            }
+        ],
+        "skill_strengths": [
+            "스킬 강점 1",
+            "스킬 강점 2"
+        ],
+        "skill_development_needs": [
+            "개발 필요 스킬 1",
+            "개발 필요 스킬 2"
+        ]
+    },
+    "achievement_analysis": {
+        "quantifiable_achievements": [
+            {
+                "achievement": "성과 설명",
+                "metric": "측정 지표",
+                "impact": "임팩트"
+            }
+        ],
+        "qualitative_achievements": [
+            "정성적 성과 1",
+            "정성적 성과 2"
+        ],
+        "recognition": [
+            "인정받은 사항 1",
+            "인정받은 사항 2"
+        ]
+    },
+    "competitive_positioning": {
+        "unique_strengths": [
+            "독특한 강점 1",
+            "독특한 강점 2"
+        ],
+        "differentiation_factors": [
+            "차별화 요소 1",
+            "차별화 요소 2"
+        ],
+        "market_positioning": "시장에서의 포지셔닝"
+    },
+    "growth_potential": {
+        "learning_agility": "학습 민첩성 평가",
+        "adaptability": "적응력 평가",
+        "growth_trajectory": "성장 궤도 분석",
+        "potential_score": "잠재력 점수 (1-10)"
+    },
+    "overall_assessment": {
+        "candidate_summary": "지원자 종합 평가",
+        "fit_score": "적합성 점수 (1-10)",
+        "recommendation": "추천 사항"
+    }
+} 

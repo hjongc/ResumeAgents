@@ -1,0 +1,26 @@
+{
+    "company_overview": "Company overview and business model",
+    "core_values": "Core values and corporate culture", 
+    "financial_status": "Financial status and performance",
+    "market_position": "Market position and competitiveness",
+    "talent_policies": "Talent development policies",
+    "candidate_advantages": "Advantages for job candidates",
+    "attractiveness_score": 85,
+    "analysis_summary": "Comprehensive analysis summary",
+    "data_sources": "Data sources",
+    "competitive_advantages": [
+        "Competitive advantage 1",
+        "Competitive advantage 2",
+        "Competitive advantage 3"
+    ],
+    "growth_opportunities": [
+        "Growth opportunity 1",
+        "Growth opportunity 2"
+    ],
+    "cultural_keywords": [
+        "Cultural keyword 1",
+        "Cultural keyword 2",
+        "Cultural keyword 3"
+    ],
+    "recommended_approach": "Recommended candidate approach"
+} 

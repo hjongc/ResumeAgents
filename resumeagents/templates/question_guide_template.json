@@ -1,0 +1,45 @@
+{
+    "question": {
+        "question": "Original question text",
+        "type": "Question type (motivation/experience/problem_solving/values/skills/other)",
+        "char_limit": "Character limit (number or null)",
+        "char_limit_note": "Character limit description",
+        "analysis": "Question intent and purpose analysis (in Korean)"
+    },
+    "guide": "Comprehensive writing guide for this question (in Korean)",
+    "writing_strategy": {
+        "structure_recommendation": "Structure recommendation considering character limit (in Korean)",
+        "content_allocation": "Character allocation guide (in Korean, e.g., Introduction 100 chars, Body 600 chars, Conclusion 100 chars)",
+        "key_points_priority": ["Priority 1 key point (in Korean)", "Priority 2 key point", "Priority 3 key point"]
+    },
+    "question_analysis": {
+        "intent": "Question intent and purpose (in Korean)",
+        "category": "Question type category (in Korean)",
+        "difficulty_level": "Difficulty level 1-5",
+        "company_values": ["Company value 1 (in Korean)", "Company value 2 (in Korean)"]
+    },
+    "requirements": {
+        "key_requirements": ["Key requirement 1 (in Korean)", "Key requirement 2 (in Korean)", "Key requirement 3 (in Korean)"],
+        "evaluation_criteria": ["Evaluation criteria 1 (in Korean)", "Evaluation criteria 2 (in Korean)", "Evaluation criteria 3 (in Korean)"],
+        "suggested_length": "Suggested word count (in Korean)",
+        "response_structure": "Required response structure (in Korean)"
+    },
+    "strategic_guidance": {
+        "approach_strategy": "Strategic approach method (in Korean)",
+        "success_indicators": ["Success indicator 1 (in Korean)", "Success indicator 2 (in Korean)"],
+        "common_pitfalls": ["Common pitfall 1 (in Korean)", "Common pitfall 2 (in Korean)"],
+        "key_messages": ["Key message 1 (in Korean)", "Key message 2 (in Korean)"]
+    },
+    "practical_tips": [
+        "Practical tip 1 (in Korean)",
+        "Practical tip 2 (in Korean)", 
+        "Practical tip 3 (in Korean)"
+    ],
+    "character_limit_tips": [
+        "Character limit tip 1 (in Korean)",
+        "Character limit tip 2 (in Korean)",
+        "Character limit tip 3 (in Korean)"
+    ],
+    "guidance_summary": "Guidance summary (in Korean)",
+    "output_language": "Korean - All content should be provided in Korean for end user"
+} 
