@@ -42,31 +42,33 @@ Please provide analysis results in English with structured JSON format. Focus on
     async def analyze(self, state: AgentState) -> AgentState:
         self.log("기업 분석 시작")
         
-        # Web Search 사용 여부 확인
-        use_web_search = self.config.get("web_search_enabled", True)
+        # 분석 설정 가져오기
+        research_depth = self.config.get("research_depth", "MEDIUM")
         
-        if use_web_search:
-            self.log("Web Search 기능 활성화 - 실시간 정보 수집")
-            # Generate search queries for web search
-            search_queries = self._generate_company_search_queries(state.company_name)
-        else:
-            self.log("Web Search 기능 비활성화 - 기본 분석만 수행")
-            search_queries = None
+        # 선택된 모델 확인
+        from ...utils import get_model_for_agent
+        model_name = get_model_for_agent("company_analysis", self.config)
+        self.log(f"선택된 모델: {model_name} (작업: company_analysis)")
         
-        prompt = f"""
-Perform comprehensive analysis of the following company{' using real-time information' if use_web_search else ''}:
+        # 웹 검색 사용 여부 결정
+        use_web_search = self.config.get("web_search_enabled", False)
+        
+        # 기본 프롬프트
+        base_prompt = f"""
+You are a professional company analyst specializing in comprehensive corporate analysis.
 
-Company: {state.company_name}
-Position: {state.job_title}
+Please analyze {state.company_name} for the position of {state.job_title}.
 
-Analyze the following aspects{' using latest available information' if use_web_search else ''}:
-1. Company overview and business model (current state)
-2. Core values and corporate culture (latest insights)
-3. Financial status and performance (recent data)
-4. Market position and competitiveness (current analysis)
-5. Talent development and growth policies (latest initiatives)
-6. Elements favorable to job candidates (current opportunities)
-7. Overall company attractiveness score (0-100)
+Focus on the following aspects:
+1. Company overview and business model
+2. Core values and corporate culture  
+3. Financial status and recent performance
+4. Market position and competitiveness
+5. Talent development and HR policies
+6. Advantages and opportunities for job candidates
+
+Job Description Context:
+{state.job_description}
 
 Provide analysis in Korean with the following JSON structure:
 {{
@@ -78,26 +80,43 @@ Provide analysis in Korean with the following JSON structure:
     "candidate_advantages": "Advantages for job candidates - in Korean",
     "attractiveness_score": 85,
     "analysis_summary": "Comprehensive analysis summary{' (based on latest info)' if use_web_search else ''} - in Korean",
-    "data_sources": "{'Web Search (real-time)' if use_web_search else 'Basic analysis'}"
+    "data_sources": "{'Web Search (real-time)' if use_web_search else 'Basic analysis'}",
+    "analysis_depth": "balanced",
+    "research_depth": "{research_depth}"
 }}
 
 {'Use web search to get current and accurate information about ' + state.company_name + '.' if use_web_search else ''}
 Important: All text content should be in Korean for end users.
 """
-
-        messages = self._create_messages(prompt)
+        
+        # 깊이 인식 프롬프트 생성
+        task_type = "company_analysis"
+        enhanced_prompt = base_prompt # No longer using create_depth_aware_prompt
         
         if use_web_search:
-            analysis_result = await self._call_llm_with_web_search(messages, search_queries)
+            self.log("Web Search 기능 활성화 - 실시간 정보 수집")
+            # 웹 검색을 통한 실시간 정보 수집
+            search_query = f"{state.company_name} company analysis financial performance 2024"
+            try:
+                web_result = self._call_llm_with_web_search(enhanced_prompt, search_query)
+                result = web_result
+            except Exception as e:
+                self.log(f"Web search failed, using standard analysis: {e}")
+                messages = self._create_messages(enhanced_prompt)
+                result = await self._call_llm(messages)
         else:
-            analysis_result = await self._call_llm(messages)
+            messages = self._create_messages(enhanced_prompt)
+            result = await self._call_llm(messages)
         
         # 분석 결과를 상태에 저장
         state.analysis_results["company_analysis"] = {
             "analyst": self.name,
-            "result": analysis_result,
+            "result": result,
             "timestamp": "2025-08-05",
-            "data_sources": "Web Search (실시간)" if use_web_search else "기본 분석"
+            "data_sources": "Web Search (실시간)" if use_web_search else "기본 분석",
+            "analysis_depth": "balanced", # No longer using analysis_depth
+            "research_depth": research_depth,
+            "model_used": model_name
         }
         
         self.log("기업 분석 완료")

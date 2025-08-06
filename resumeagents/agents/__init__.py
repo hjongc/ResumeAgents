@@ -1,35 +1,43 @@
 """
-ResumeAgents agents module.
+ResumeAgents - Multi-agent framework for job application document creation.
 """
 
-# Import all agent teams
+# Analysis Team - External Information Analysis
 from .analysis import CompanyAnalyst, JDAnalyst, MarketAnalyst
-from .evaluation import CandidateAnalyst, CultureAnalyst, TrendAnalyst
-from .research import StrengthResearcher, WeaknessResearcher
+
+# Matching Team - Candidate-Company Matching  
+from .matching import CandidateAnalyst, CultureAnalyst, TrendAnalyst
+
+# Strategy Team - Strategic Positioning
+from .strategy import StrengthResearcher, WeaknessResearcher
+
+# Guide Team - Writing Guidance
+from .guides import QuestionGuide, ExperienceGuide, WritingGuide
+
+# Production Team - Document Creation
 from .production import DocumentWriter, QualityManager
-from .guide import QuestionGuideAgent, ExperienceGuideAgent, WritingGuideAgent
 
 __all__ = [
     # Analysis Team
-    "CompanyAnalyst",
+    "CompanyAnalyst", 
     "JDAnalyst", 
     "MarketAnalyst",
     
-    # Evaluation Team
+    # Matching Team
     "CandidateAnalyst",
-    "CultureAnalyst",
+    "CultureAnalyst", 
     "TrendAnalyst",
     
-    # Research Team
+    # Strategy Team
     "StrengthResearcher",
     "WeaknessResearcher",
+    
+    # Guide Team
+    "QuestionGuide",
+    "ExperienceGuide",
+    "WritingGuide",
     
     # Production Team
     "DocumentWriter",
     "QualityManager",
-    
-    # Guide Team
-    "QuestionGuideAgent",
-    "ExperienceGuideAgent",
-    "WritingGuideAgent",
 ] 

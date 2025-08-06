@@ -7,12 +7,12 @@ from ..base_agent import BaseAgent, AgentState
 import json
 
 
-class QuestionGuideAgent(BaseAgent):
+class QuestionGuide(BaseAgent):
     """Agent responsible for analyzing self-introduction questions and providing comprehensive guidance."""
     
     def __init__(self, llm=None, config=None):
         super().__init__(
-            name="Question Guide Agent",
+            name="Question Guide",
             role="문항 가이드 전문가",
             llm=llm,
             config=config
@@ -39,20 +39,25 @@ Key analysis considerations:
 Please provide comprehensive guidance in Korean language with structured format. Focus on helping candidates understand what the company truly wants to know and how to respond effectively."""
 
     async def analyze(self, state: AgentState) -> AgentState:
-        """Analyze self-introduction questions and provide comprehensive guidance."""
-        custom_questions = state.candidate_info.get("custom_questions", [])
+        self.log("문항 가이드 분석 시작")
         
-        if not custom_questions:
-            state.analysis_results["question_guides"] = {
-                "status": "no_questions",
-                "message": "No custom questions provided",
-                "guides": []
-            }
-            return state
+        # 분석 깊이 설정 가져오기
+        analysis_depth = self.config.get("analysis_depth", "medium")
         
+        # 분석 깊이에 따른 가이드 상세도 조정
+        detail_level = ""
+        if analysis_depth == "low":
+            detail_level = "간단하고 핵심적인 가이드만 제공해주세요."
+        elif analysis_depth == "medium":
+            detail_level = "균형잡힌 상세도의 가이드를 제공해주세요."
+        elif analysis_depth == "high":
+            detail_level = "매우 상세하고 구체적인 가이드를 제공해주세요. 다양한 관점과 예시를 포함해주세요."
+        
+        # 문항별 가이드 생성
         guides = []
+        questions = state.candidate_info.get("custom_questions", [])
         
-        for question_data in custom_questions:
+        for question_data in questions:
             question = question_data.get("question", "")
             char_limit = question_data.get("char_limit")
             char_limit_note = question_data.get("char_limit_note", "")
@@ -74,6 +79,36 @@ Please provide comprehensive guidance in Korean language with structured format.
                 except Exception as e:
                     print(f"⚠️  벡터 검색 실패: {e}")
                     relevant_experiences = []
+            
+            # 벡터 검색 실패 시 state.candidate_info에서 직접 경험 정보 추출
+            if not relevant_experiences and state.candidate_info:
+                print("📝 state.candidate_info에서 경험 정보 추출")
+                experiences_text = ""
+                
+                # 경험 정보 수집
+                if "experience" in state.candidate_info:
+                    experiences_text += f"Work Experience:\n{state.candidate_info['experience']}\n\n"
+                
+                if "projects" in state.candidate_info:
+                    experiences_text += f"Projects:\n{state.candidate_info['projects']}\n\n"
+                
+                if "skills" in state.candidate_info:
+                    experiences_text += f"Skills: {state.candidate_info['skills']}\n\n"
+                
+                if "education" in state.candidate_info:
+                    experiences_text += f"Education: {state.candidate_info['education']}\n\n"
+                
+                # 간단한 관련도 점수로 경험 정보 구성
+                if experiences_text.strip():
+                    relevant_experiences = [{
+                        "experience": {
+                            "title": "Candidate Experience Summary",
+                            "description": experiences_text.strip(),
+                            "type": "comprehensive"
+                        },
+                        "relevance_score": 0.8,
+                        "search_method": "direct_extraction"
+                    }]
             
             # 글자수 제한 정보
             char_limit_info = ""
@@ -191,7 +226,7 @@ Please provide comprehensive guidance in Korean language with structured format.
         
         state.analysis_results["question_guides"] = {
             "status": "completed",
-            "total_questions": len(custom_questions),
+            "total_questions": len(questions),
             "guides": guides
         }
         

@@ -1,5 +1,5 @@
 """
-Evaluation Team - Specialized in evaluating candidate fit and cultural alignment.
+Matching Team - Specialized in evaluating candidate fit and cultural alignment.
 """
 
 from .candidate_analyst import CandidateAnalyst

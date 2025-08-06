@@ -27,39 +27,58 @@ def get_env_float(key: str, default: float = 0.0) -> float:
     except ValueError:
         return default
 
+def get_depth_config(research_depth: str) -> dict:
+    """
+    Get depth-specific configuration from environment variables.
+    
+    Args:
+        research_depth: LOW, MEDIUM, or HIGH
+        
+    Returns:
+        dict: Depth-specific configuration
+    """
+    depth = research_depth.upper()
+    
+    return {
+        # ===== Depth별 모델 설정 =====
+        "quick_think_model": os.getenv(f"{depth}_QUICK_THINK_MODEL", "gpt-4o-mini"),
+        "deep_think_model": os.getenv(f"{depth}_DEEP_THINK_MODEL", "o4-mini"),
+        "web_search_model": os.getenv(f"{depth}_WEB_SEARCH_MODEL", "gpt-4o-mini"),
+        "evaluator_model": os.getenv(f"{depth}_EVALUATOR_MODEL", "gpt-4o-mini"),
+        
+        # ===== Depth별 기타 설정 =====
+        "max_tokens": get_env_int(f"{depth}_MAX_TOKENS", 4000),
+        "evaluator_max_tokens": get_env_int(f"{depth}_EVALUATOR_MAX_TOKENS", 2000),
+        "quality_threshold": get_env_float(f"{depth}_QUALITY_THRESHOLD", 0.8),
+        "max_revision_rounds": get_env_int(f"{depth}_MAX_REVISION_ROUNDS", 2),
+        "evaluator_temperature": get_env_float(f"{depth}_EVALUATOR_TEMPERATURE", 0.3),
+        
+        # ===== 연구 깊이 =====
+        "research_depth": depth
+    }
+
 DEFAULT_CONFIG = {
-    # LLM Models (from .env)
-    "deep_think_llm": os.getenv("DEEP_THINK_LLM", "gpt-4o-mini"),
-    "quick_think_llm": os.getenv("QUICK_THINK_LLM", "gpt-4o-mini"),
+    # ===== 연구 깊이 설정 (핵심 설정) =====
+    "research_depth": os.getenv("RESEARCH_DEPTH", "MEDIUM"),  # LOW, MEDIUM, HIGH
     
-    # Agent Settings (from .env)
-    "max_debate_rounds": get_env_int("MAX_DEBATE_ROUNDS", 2),
-    "analysis_depth": os.getenv("ANALYSIS_DEPTH", "medium"),
-    "online_tools": get_env_bool("ONLINE_TOOLS", True),
+    # ===== 기본 설정 =====
+    "temperature": get_env_float("TEMPERATURE", 0.7),
+    
+    # ===== 웹 검색 설정 =====
     "web_search_enabled": get_env_bool("WEB_SEARCH_ENABLED", True),
+    "web_search_timeout": get_env_int("WEB_SEARCH_TIMEOUT", 60),
+    "web_search_max_tokens": get_env_int("WEB_SEARCH_MAX_TOKENS", 3000),
+    "web_search_retry_count": get_env_int("WEB_SEARCH_RETRY_COUNT", 3),
     
-    # Document Settings (from .env)
+    # ===== 문서 설정 =====
     "document_type": os.getenv("DOCUMENT_TYPE", "resume"),
     "language": os.getenv("LANGUAGE", "ko"),
     "format": os.getenv("FORMAT", "markdown"),
     
-    # Analysis Settings
-    "include_company_analysis": get_env_bool("INCLUDE_COMPANY_ANALYSIS", True),
-    "include_jd_analysis": get_env_bool("INCLUDE_JD_ANALYSIS", True),
-    "include_trend_analysis": get_env_bool("INCLUDE_TREND_ANALYSIS", True),
-    "include_experience_analysis": get_env_bool("INCLUDE_EXPERIENCE_ANALYSIS", True),
-    
-    # Quality Settings (from .env)
-    "quality_threshold": get_env_float("QUALITY_THRESHOLD", 0.8),
-    "max_revision_rounds": get_env_int("MAX_REVISION_ROUNDS", 3),
-    
-    # API Settings (from .env)
+    # ===== API 설정 =====
     "openai_api_key": os.getenv("OPENAI_API_KEY"),
-    "temperature": get_env_float("TEMPERATURE", 0.7),
-    "max_tokens": get_env_int("MAX_TOKENS", 4000),
     
-    # Debug Settings (from .env)
+    # ===== 디버그 설정 =====
     "debug": get_env_bool("DEBUG", False),
     "verbose": get_env_bool("VERBOSE", False),
-    "save_intermediate_results": get_env_bool("SAVE_INTERMEDIATE_RESULTS", True),
 } 

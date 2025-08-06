@@ -1,5 +1,5 @@
 """
-Research Team - Specialized in critical evaluation and strategic analysis.
+Strategy Team - Specialized in strategic positioning and competitive analysis.
 """
 
 from .strength_researcher import StrengthResearcher

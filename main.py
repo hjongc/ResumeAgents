@@ -11,6 +11,7 @@ from typing import Dict, Any
 from dotenv import load_dotenv
 
 from resumeagents.graph.resume_graph import ResumeAgentsGraph
+from resumeagents.agents.base_agent import AgentState
 from resumeagents.default_config import DEFAULT_CONFIG
 from resumeagents.utils.output_manager import OutputManager
 from resumeagents.utils.profile_manager import ProfileManager
@@ -49,23 +50,48 @@ def create_example_data():
   * Android 앱 개발 및 유지보수
   * RESTful API 연동 및 데이터베이스 설계
   * 사용자 10만명 규모 서비스 운영
+  * 팀 내 코드 리뷰 문화 정착 및 개발 프로세스 개선
+  * 신규 기능 개발로 사용자 만족도 15% 향상
   
 - XYZ스타트업 (2019): 인턴
   * 웹 애플리케이션 프론트엔드 개발
   * React.js 기반 사용자 인터페이스 구현
+  * 실시간 데이터 시각화 기능 개발
+  * 개발팀과 디자인팀 간 협업 프로세스 개선
             """,
-            "skills": "Java, Kotlin, Python, JavaScript, React, Spring Boot, MySQL, Git",
+            "skills": "Java, Kotlin, Python, JavaScript, React, Spring Boot, MySQL, Git, Docker, AWS",
             "projects": """
 - 개인 프로젝트: AI 기반 추천 시스템 (2023)
   * Python, TensorFlow 활용
   * 머신러닝 모델 설계 및 구현
   * 추천 정확도 85% 달성
+  * 사용자 행동 데이터 분석 및 개인화 추천 알고리즘 개발
+  * A/B 테스트를 통한 성능 최적화
   
 - 팀 프로젝트: 실시간 채팅 애플리케이션 (2022)
   * Node.js, Socket.io 활용
   * 실시간 메시징 기능 구현
   * 동시 접속자 1000명 처리 가능
+  * 팀원 4명과 협업하여 3개월 만에 출시
+  * 사용자 피드백을 반영한 UI/UX 개선
             """,
+            "achievements": [
+                "ABC테크에서 연간 우수사원상 수상 (2022)",
+                "사용자 10만명 규모 서비스 안정적 운영",
+                "개발 생산성 향상을 위한 자동화 도구 개발",
+                "신입 개발자 멘토링 프로그램 참여"
+            ],
+            "strengths": [
+                "문제 해결 능력이 뛰어나며 새로운 기술 습득에 적극적",
+                "팀워크를 중시하며 원활한 커뮤니케이션 능력 보유",
+                "사용자 중심의 개발 철학을 가지고 지속적인 개선에 노력",
+                "코드 품질과 성능 최적화에 대한 높은 관심"
+            ],
+            "weaknesses": [
+                "대규모 시스템 설계 경험이 상대적으로 부족",
+                "클라우드 인프라 운영 경험이 제한적",
+                "영어 커뮤니케이션 능력 향상 필요"
+            ],
             "custom_questions": [
                 {
                     "question": "지원 동기와 입사 후 포부를 기술해 주십시오.",
@@ -185,90 +211,113 @@ async def run_resume_agents(data: Dict[str, Any], config: Dict[str, Any] = None)
     """ResumeAgents를 실행합니다."""
     if config is None:
         config = DEFAULT_CONFIG.copy()
-        config["debug"] = True
-        config["document_type"] = "resume"
     
-    # Initialize graph
+    # 그래프 초기화
     graph = ResumeAgentsGraph(debug=True, config=config)
     
-    print(f"ResumeAgents 분석을 시작합니다...")
-    print(f"기업: {data['company_name']}")
-    print(f"직무: {data['job_title']}")
-    print()
+    # 초기 상태 생성
+    initial_state = AgentState(
+        company_name=data["company_name"],
+        job_title=data["job_title"],
+        job_description=data["job_description"],
+        candidate_info=data["candidate_info"],
+        questions=data.get("questions", []),
+        analysis_results={}
+    )
     
     # Run analysis
     try:
-        final_state, decision = await graph.propagate(
-            company_name=data["company_name"],
-            job_title=data["job_title"],
-            job_description=data["job_description"],
-            candidate_info=data["candidate_info"]
-        )
+        final_state = await graph.run(initial_state)
         
         print("\n" + "="*50)
         print("분석 완료!")
         print("="*50)
         
-        # 디버깅: decision 객체 구조 확인
-        print(f"Decision type: {type(decision)}")
-        print(f"Decision content: {decision}")
-        
-        if hasattr(decision, 'quality_score'):
-            print(f"품질 점수: {decision.quality_score:.1f}/100")
-        elif isinstance(decision, dict) and 'quality_score' in decision:
-            print(f"품질 점수: {decision['quality_score']:.1f}/100")
+        # final_state가 dict인 경우 처리
+        if isinstance(final_state, dict):
+            analysis_results = final_state.get("analysis_results", {})
         else:
-            print("품질 점수: 정보 없음")
-        print()
+            analysis_results = final_state.analysis_results
         
         # 가이드 결과 출력
-        if "question_guides" in final_state.analysis_results:
+        if "question_guides" in analysis_results:
             print("=== 자기소개서 문항 가이드 ===")
-            question_guides = final_state.analysis_results["question_guides"]["guides"]
+            question_guides = analysis_results["question_guides"]["guides"]
             for i, guide_data in enumerate(question_guides):
                 print(f"\n문항 {i+1}: {guide_data['question']['question']}")
                 print("-" * 40)
                 print(guide_data['guide'])
                 print()
         
-        if "experience_guides" in final_state.analysis_results:
-            print("=== 경험 가이드 ===")
-            experience_guides = final_state.analysis_results["experience_guides"]["guides"]
-            for i, guide_data in enumerate(experience_guides):
-                print(f"\n문항 {i+1} 경험 가이드:")
-                print("-" * 40)
-                print(guide_data['guide'])
-                print()
+        # 최종 문서 출력 (both 워크플로우인 경우)
+        final_document = None
+        quality_score = None
         
-        if "writing_guides" in final_state.analysis_results:
-            print("=== 작성 가이드 ===")
-            writing_guides = final_state.analysis_results["writing_guides"]["guides"]
-            for i, guide_data in enumerate(writing_guides):
-                print(f"\n문항 {i+1} 작성 가이드:")
-                print("-" * 40)
-                print(guide_data['guide'])
-                print()
+        if isinstance(final_state, dict):
+            final_document = final_state.get('final_document')
+            quality_score = final_state.get('quality_score')
+        else:
+            final_document = getattr(final_state, 'final_document', None)
+            quality_score = getattr(final_state, 'quality_score', None)
         
-        if decision["final_document"]:
-            print("작성된 서류:")
-            print("-" * 30)
-            print(decision["final_document"])
-            print("-" * 30)
+        if config.get('workflow_type') != 'guide_only' and final_document:
+            print("=== 최종 자기소개서 ===")
+            print(final_document)
+            print()
+            
+            # 품질 점수 출력
+            if quality_score:
+                print(f"품질 점수: {quality_score:.2f}")
         
-        # 결과 저장
-        output_manager = OutputManager()
-        output_dir = output_manager.save_all_results(
-            company_name=data["company_name"],
-            job_title=data["job_title"],
-            final_state=final_state,
-            decision=decision
-        )
+        # 📁 결과 파일 저장
+        try:
+            from resumeagents.utils.output_manager import OutputManager
+            output_manager = OutputManager()
+            
+            # 결과 저장을 위한 decision 객체 생성 (기존 호환성)
+            decision = {
+                "workflow_type": config.get('workflow_type', 'both'),
+                "research_depth": config.get('research_depth', 'MEDIUM'),
+                "document_type": config.get('document_type', 'resume'),
+                "quality_threshold": config.get('quality_threshold', 0.8),
+                "total_guides": len(analysis_results.get("question_guides", {}).get("guides", [])),
+                "has_final_document": bool(final_document)
+            }
+            
+            # final_state를 AgentState 형태로 변환 (OutputManager 호환)
+            if isinstance(final_state, dict):
+                # dict를 AgentState로 변환
+                temp_state = AgentState(
+                    company_name=data["company_name"],
+                    job_title=data["job_title"],
+                    job_description=data["job_description"],
+                    candidate_info=data["candidate_info"],
+                    questions=data.get("questions", []),
+                    analysis_results=analysis_results
+                )
+            else:
+                temp_state = final_state
+            
+            output_dir = output_manager.save_all_results(
+                data["company_name"], 
+                data["job_title"], 
+                temp_state, 
+                decision
+            )
+            
+            print(f"\n💾 모든 결과가 저장되었습니다!")
+            print(f"📂 저장 위치: {output_dir}")
+            
+        except Exception as save_error:
+            print(f"⚠️ 파일 저장 중 오류 발생 (분석은 정상 완료): {save_error}")
         
-        return final_state, decision
+        return final_state
         
     except Exception as e:
-        print(f"Error: {str(e)}")
-        return None, None
+        print(f"❌ 분석 중 오류가 발생했습니다: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 
 def main():
@@ -470,26 +519,57 @@ def main():
         print("❌ 잘못된 선택입니다. 예시 데이터를 사용합니다.")
         data = create_example_data()
     
-    # 설정 선택
-    print("\n⚙️  시스템 설정:")
-    document_type = input("문서 유형 (resume/cover_letter) [기본값: resume]: ").strip() or "resume"
-    analysis_depth = input("분석 깊이 (low/medium/high) [기본값: medium]: ").strip() or "medium"
+    # 시스템 설정
+    print("\n=== 워크플로우 선택 ===")
+    print("1. 가이드만 생성 (Guide-Only)")
+    print("2. 가이드 + 자기소개서 작성 (Both)")
     
+    workflow_choice = input("워크플로우를 선택하세요 (1-2) [기본값: 2]: ").strip() or "2"
+    
+    if workflow_choice == "1":
+        workflow_type = "guide_only"
+        print("📋 가이드만 생성하는 워크플로우가 선택되었습니다.")
+    else:
+        workflow_type = "both"
+        print("📄 가이드 생성 후 자기소개서를 작성하는 워크플로우가 선택되었습니다.")
+    
+    document_type = input("문서 유형 (resume/cover_letter) [기본값: resume]: ").strip() or "resume"
+    research_depth = input("연구 깊이 (LOW/MEDIUM/HIGH) [기본값: MEDIUM]: ").strip() or "MEDIUM"
+    
+    # 설정 구성
     config = DEFAULT_CONFIG.copy()
-    config["debug"] = True
     config["document_type"] = document_type
-    config["analysis_depth"] = analysis_depth
-    config["web_search_enabled"] = True  # Web Search 활성화
+    config["research_depth"] = research_depth
+    config["workflow_type"] = workflow_type
+    
+    # Research depth 프리셋 적용
+    from resumeagents.utils import get_research_depth_config
+    research_config = get_research_depth_config(research_depth)
+    config.update(research_config)
+    
+    # 디버깅: 설정 확인
+    print(f"\n🔧 설정 확인:")
+    print(f"   연구 깊이: {research_depth}")
+    print(f"   분석 깊이: {config.get('analysis_depth', 'balanced')}")
+    print(f"   웹 검색: {'활성화' if config.get('web_search_enabled', True) else '비활성화'}")
+    print(f"   품질 임계값: {config['quality_threshold']}")
+    print(f"   최대 토큰: {config['max_tokens']}")
+    print(f"   수정 라운드: {config['max_revision_rounds']}회")
     
     print(f"\n🎯 분석 시작:")
     print(f"   기업: {data['company_name']}")
     print(f"   직무: {data['job_title']}")
     print(f"   문서 유형: {document_type}")
-    print(f"   분석 깊이: {analysis_depth}")
     print()
     
     # Run analysis
-    asyncio.run(run_resume_agents(data, config))
+    import asyncio
+    final_state = asyncio.run(run_resume_agents(data, config))
+    
+    if final_state:
+        print("\n🎉 ResumeAgents 분석이 성공적으로 완료되었습니다!")
+    else:
+        print("\n❌ 분석 과정에서 문제가 발생했습니다.")
 
 
 if __name__ == "__main__":

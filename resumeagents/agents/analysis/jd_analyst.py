@@ -1,5 +1,5 @@
 """
-Job Description Analyst Agent for ResumeAgents.
+JD Analyst Agent for ResumeAgents.
 """
 
 from typing import Dict, Any

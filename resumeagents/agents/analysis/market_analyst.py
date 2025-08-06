@@ -36,27 +36,38 @@ Key analysis considerations:
 - Global trends and domestic impact (current analysis)
 - Market entry barriers and opportunity factors (latest assessment)
 
-Please provide analysis results in Korean language with structured JSON format. Focus on elements that demonstrate candidate's market understanding. Use web search to get the most current market information."""
+Please provide analysis results in Korean with structured JSON format. Focus on market insights that would be valuable for job candidates. Use web search to get the most current market information."""
 
     async def analyze(self, state: AgentState) -> AgentState:
         self.log("시장 분석 시작")
+        
+        # 분석 깊이 설정 가져오기
+        analysis_depth = self.config.get("analysis_depth", "medium")
         
         # Web Search 사용 여부 확인
         use_web_search = self.config.get("web_search_enabled", True)
         
         if use_web_search:
             self.log("Web Search 기능 활성화 - 실시간 정보 수집")
-            # Generate search queries for web search
-            search_queries = self._generate_market_search_queries(state.company_name, state.job_title)
         else:
             self.log("Web Search 기능 비활성화 - 기본 분석만 수행")
-            search_queries = None
+        
+        # 분석 깊이에 따른 프롬프트 조정
+        depth_instruction = ""
+        if analysis_depth == "low":
+            depth_instruction = "핵심적인 시장 정보만 간단히 분석해주세요."
+        elif analysis_depth == "medium":
+            depth_instruction = "균형잡힌 시장 분석을 해주세요."
+        elif analysis_depth == "high":
+            depth_instruction = "매우 상세하고 깊이 있는 시장 분석을 해주세요. 최신 시장 데이터와 트렌드를 최대한 활용해주세요."
         
         prompt = f"""
 Please perform a comprehensive market analysis for the following company and position{' using real-time information' if use_web_search else ''}:
 
 Company: {state.company_name}
 Position: {state.job_title}
+
+{depth_instruction}
 
 Please analyze the following aspects{' using the latest available information' if use_web_search else ''}:
 1. Market size and growth rate of the relevant industry (current data)
@@ -77,17 +88,25 @@ Please provide your analysis in Korean language with the following JSON structur
     "key_trends": "지원자가 알아야 할 시장 동향{' (최신 인사이트)' if use_web_search else ''}",
     "understanding_score": 85,
     "analysis_summary": "시장 분석 요약{' (최신 정보 기반)' if use_web_search else ''}",
-    "data_sources": "{'Web Search (실시간)' if use_web_search else '기본 분석'}"
+    "data_sources": "{'Web Search (실시간)' if use_web_search else '기본 분석'}",
+    "analysis_depth": "{analysis_depth}"
 }}
 
 {'Use web search to get the most current and accurate market information about the industry related to ' + state.company_name + ' and ' + state.job_title + '.' if use_web_search else ''}
 """
 
-        messages = self._create_messages(prompt)
-        
         if use_web_search:
-            analysis_result = await self._call_llm_with_web_search(messages, search_queries)
+            # 웹 검색을 통한 실시간 정보 수집
+            search_query = f"{state.company_name} market analysis industry trends 2025"
+            try:
+                web_result = self._call_llm_with_web_search(prompt, search_query)
+                analysis_result = web_result
+            except Exception as e:
+                self.log(f"Web search failed, using standard analysis: {e}")
+                messages = self._create_messages(prompt)
+                analysis_result = await self._call_llm(messages)
         else:
+            messages = self._create_messages(prompt)
             analysis_result = await self._call_llm(messages)
         
         # 분석 결과를 상태에 저장

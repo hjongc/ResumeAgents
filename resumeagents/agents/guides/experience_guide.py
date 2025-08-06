@@ -1,17 +1,17 @@
 """
-Experience Guide Agent for providing comprehensive experience guidance.
+Experience Guide Agent for matching experiences to questions and providing storytelling guidance.
 """
 
 from typing import Dict, Any, List
 from ..base_agent import BaseAgent, AgentState
 
 
-class ExperienceGuideAgent(BaseAgent):
-    """Agent responsible for providing comprehensive experience guidance for self-introduction questions."""
+class ExperienceGuide(BaseAgent):
+    """Agent responsible for matching candidate experiences to questions and providing storytelling guidance."""
     
     def __init__(self, llm=None, config=None):
         super().__init__(
-            name="Experience Guide Agent",
+            name="Experience Guide",
             role="경험 가이드 전문가",
             llm=llm,
             config=config

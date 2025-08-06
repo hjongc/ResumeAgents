@@ -12,6 +12,9 @@ from langchain.schema import HumanMessage, SystemMessage
 if TYPE_CHECKING:
     from ..utils.profile_manager import ProfileManager
 
+# 모델 호환성 체크 함수 import
+from ..utils import supports_temperature
+
 
 class AgentState(BaseModel):
     """Shared state between agents."""
@@ -22,7 +25,9 @@ class AgentState(BaseModel):
     candidate_info: Dict[str, Any] = Field(default_factory=dict)
     analysis_results: Dict[str, Any] = Field(default_factory=dict)
     quality_score: Optional[float] = None
-    profile_manager: Optional['ProfileManager'] = Field(default=None, exclude=True)  # 직렬화에서 제외
+    final_document: str = ""  # 최종 문서
+    recommendations: List[str] = Field(default_factory=list)  # 추천사항
+    profile_manager: Optional[Any] = Field(default=None, exclude=True)  # Any로 변경하여 타입 오류 방지
     
     class Config:
         arbitrary_types_allowed = True  # ProfileManager 같은 커스텀 타입 허용
@@ -31,22 +36,27 @@ class AgentState(BaseModel):
 class BaseAgent(ABC):
     """Base class for all agents in ResumeAgents."""
     
-    def __init__(
-        self,
-        name: str,
-        role: str,
-        llm: Optional[ChatOpenAI] = None,
-        config: Optional[Dict[str, Any]] = None,
-    ):
+    def __init__(self, name: str, role: str, llm=None, config=None):
         self.name = name
         self.role = role
-        self.llm = llm or ChatOpenAI(
-            model="gpt-4o-mini",
-            temperature=0.7,
-            max_tokens=4000
-        )
         self.config = config or {}
         
+        # LLM 초기화
+        if not llm:
+            model_name = self.config.get("quick_think_llm", "gpt-4o-mini")
+            llm_config = {
+                "model": model_name,
+                "max_tokens": self.config.get("max_tokens", 4000)
+            }
+            
+            # 모델이 temperature를 지원하는 경우에만 추가
+            if supports_temperature(model_name):
+                llm_config["temperature"] = self.config.get("temperature", 0.7)
+            
+            self.llm = ChatOpenAI(**llm_config)
+        else:
+            self.llm = llm
+    
     @abstractmethod
     async def analyze(self, state: AgentState) -> AgentState:
         """Perform analysis and return updated state."""

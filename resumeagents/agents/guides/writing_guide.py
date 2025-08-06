@@ -1,17 +1,17 @@
 """
-Writing Guide Agent for providing comprehensive writing guidance.
+Writing Guide Agent for providing comprehensive writing strategy and structure guidance.
 """
 
 from typing import Dict, Any, List
 from ..base_agent import BaseAgent, AgentState
 
 
-class WritingGuideAgent(BaseAgent):
-    """Agent responsible for providing comprehensive writing guidance for self-introduction questions."""
+class WritingGuide(BaseAgent):
+    """Agent responsible for providing comprehensive writing strategy and structure guidance."""
     
     def __init__(self, llm=None, config=None):
         super().__init__(
-            name="Writing Guide Agent",
+            name="Writing Guide",
             role="작성 가이드 전문가",
             llm=llm,
             config=config
