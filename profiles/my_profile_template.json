@@ -1,0 +1,219 @@
+{
+  "personal_info": {
+    "name": "",
+    "age": "",
+    "email": "",
+    "phone": "",
+    "location": ""
+  },
+  "education": [
+    {
+      "degree": "학사",
+      "major": "컴퓨터공학",
+      "university": "서울대학교",
+      "graduation_year": "2020",
+      "gpa": "3.8/4.5",
+      "relevant_courses": [
+        "데이터구조",
+        "알고리즘",
+        "소프트웨어공학"
+      ],
+      "honors": [
+        "졸업우등상",
+        "학과우수상"
+      ]
+    }
+  ],
+  "work_experience": [
+    {
+      "company": "ABC테크",
+      "position": "주니어 개발자",
+      "duration": {
+        "start": "2021-03",
+        "end": "2023-12"
+      },
+      "department": "모바일개발팀",
+      "responsibilities": [
+        "Android 앱 개발 및 유지보수",
+        "RESTful API 연동",
+        "코드 리뷰 및 품질 관리"
+      ],
+      "achievements": [
+        {
+          "description": "사용자 10만명 달성",
+          "metrics": "MAU 100,000명",
+          "impact": "매출 30% 증가 기여"
+        },
+        {
+          "description": "앱 성능 최적화",
+          "metrics": "로딩 시간 50% 단축",
+          "impact": "사용자 만족도 4.2→4.7점 향상"
+        }
+      ],
+      "technologies": [
+        "Java",
+        "Kotlin",
+        "Android",
+        "Firebase"
+      ],
+      "team_size": "5명",
+      "key_projects": [
+        "모바일 앱 리뉴얼",
+        "결제 시스템 개발"
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "AI 기반 추천 시스템",
+      "type": "개인 프로젝트",
+      "duration": {
+        "start": "2023-01",
+        "end": "2023-06"
+      },
+      "description": "머신러닝을 활용한 상품 추천 시스템 개발",
+      "role": "Full-stack 개발자",
+      "technologies": [
+        "Python",
+        "TensorFlow",
+        "Django",
+        "PostgreSQL"
+      ],
+      "achievements": [
+        {
+          "description": "추천 정확도 향상",
+          "metrics": "정확도 85% 달성",
+          "impact": "클릭률 25% 증가"
+        }
+      ],
+      "github_url": "https://github.com/user/recommendation-system",
+      "demo_url": "https://demo.example.com",
+      "challenges": [
+        "데이터 전처리",
+        "모델 최적화",
+        "실시간 추천"
+      ],
+      "learnings": [
+        "머신러닝 파이프라인 구축",
+        "대용량 데이터 처리"
+      ]
+    }
+  ],
+  "skills": {
+    "programming_languages": [
+      {
+        "name": "Java",
+        "proficiency": "고급",
+        "years": 3
+      },
+      {
+        "name": "Python",
+        "proficiency": "중급",
+        "years": 2
+      },
+      {
+        "name": "JavaScript",
+        "proficiency": "중급",
+        "years": 1
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "Spring Boot",
+        "proficiency": "중급",
+        "years": 2
+      },
+      {
+        "name": "React",
+        "proficiency": "초급",
+        "years": 1
+      }
+    ],
+    "databases": [
+      {
+        "name": "MySQL",
+        "proficiency": "중급",
+        "years": 2
+      },
+      {
+        "name": "PostgreSQL",
+        "proficiency": "초급",
+        "years": 1
+      }
+    ],
+    "tools": [
+      {
+        "name": "Git",
+        "proficiency": "고급",
+        "years": 3
+      },
+      {
+        "name": "Docker",
+        "proficiency": "중급",
+        "years": 1
+      }
+    ],
+    "soft_skills": [
+      "팀워크",
+      "커뮤니케이션",
+      "문제해결",
+      "리더십",
+      "학습능력"
+    ]
+  },
+  "certifications": [
+    {
+      "name": "정보처리기사",
+      "issuer": "한국산업인력공단",
+      "date": "2020-08",
+      "validity": "평생"
+    }
+  ],
+  "languages": [
+    {
+      "language": "한국어",
+      "proficiency": "원어민"
+    },
+    {
+      "language": "영어",
+      "proficiency": "중급",
+      "test_score": "TOEIC 850"
+    }
+  ],
+  "achievements": [
+    {
+      "title": "사내 해커톤 1위",
+      "date": "2022-11",
+      "description": "AI 챗봇 서비스 개발로 1위 수상",
+      "recognition": "CEO 특별상"
+    }
+  ],
+  "interests": [
+    "머신러닝",
+    "오픈소스 기여",
+    "기술 블로그 작성",
+    "스타트업"
+  ],
+  "career_goals": {
+    "short_term": "풀스택 개발자로서 전문성 강화",
+    "long_term": "AI/ML 분야 전문가로 성장",
+    "target_companies": [
+      "네이버",
+      "카카오",
+      "삼성전자"
+    ],
+    "preferred_roles": [
+      "시니어 개발자",
+      "테크리드"
+    ]
+  },
+  "portfolio_links": {
+    "github": "https://github.com/username",
+    "blog": "https://blog.example.com",
+    "linkedin": "https://linkedin.com/in/username"
+  },
+  "created_at": "2025-08-06T22:55:07.417387",
+  "updated_at": "2025-08-06T22:55:07.417405",
+  "version": "1.0",
+  "vectordb_synced": false
+}
