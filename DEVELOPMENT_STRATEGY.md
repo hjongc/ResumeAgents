@@ -7,12 +7,14 @@
 - Create optimal documents through comprehensive analysis and strategic guidance
 - Provide self-introduction question guides with character limit optimization
 - Implement category-wise evaluation and revision system
+- **Support flexible profile management with optional vector database integration**
 
 ### Core Values
 - **Modularity**: Independent roles and responsibilities for each agent
 - **Quality**: Document quality assurance through multi-stage review
 - **Efficiency**: Strategic workflow with context accumulation
 - **Usability**: Simple usage with comprehensive guidance
+- **Flexibility**: Choose between lightweight JSON-only or advanced vector DB modes
 
 ## 🏗️ Architecture Design
 
@@ -52,11 +54,68 @@ ResumeAgents/
 │   │       └── production_evaluator.py     # Production category evaluator
 │   ├── utils/              # Utility modules
 │   │   ├── __init__.py     # Model classification and utilities
-│   │   └── profile_manager.py
+│   │   ├── profile_manager.py              # Hybrid profile management
+│   │   ├── unified_vectordb.py             # Optional vector database
+│   │   └── output_manager.py
 │   └── graph/              # Graph structure
 │       └── resume_graph.py
-├── profiles/               # User profiles storage
-└── experience_db/          # Vector database storage
+├── profiles/                  # User profile storage (JSON files)
+├── db/                       # Optional vector database storage
+└── outputs/                  # Generated resume analysis results
+├── create_profile.py       # Profile creation tool with mode selection
+```
+
+## 📊 **Hybrid Profile Management System**
+
+### **Profile Storage Strategy**
+
+#### **🎛️ User Mode Selection**
+```python
+profile_modes = {
+    "light": {
+        "storage": "json_only",
+        "search": "keyword_matching", 
+        "setup": "zero_dependencies",
+        "target": "quick_start_users"
+    },
+    "advanced": {
+        "storage": "json_plus_vectordb",
+        "search": "semantic_similarity",
+        "setup": "faiss_installation", 
+        "target": "heavy_experience_users"
+    }
+}
+```
+
+#### **📁 Light Mode (JSON Only)**
+- **Storage**: `profiles/{name}_profile.json`
+- **Search**: Keyword-based experience matching
+- **Dependencies**: None (built-in Python only)
+- **Use Case**: Simple profiles, quick document creation
+- **Fallback**: Automatic when vector DB unavailable
+
+#### **🔍 Advanced Mode (JSON + Vector DB)**
+- **Storage**: JSON files + FAISS vector index
+- **Search**: Semantic similarity matching with relevance scores
+- **Dependencies**: `sentence-transformers`, `faiss-cpu`
+- **Use Case**: Rich profiles, precise experience matching
+- **Auto-sync**: JSON changes automatically update vector DB
+
+### **Profile Data Structure**
+```json
+{
+  "profile_metadata": {
+    "name": "candidate_name",
+    "created_at": "2024-01-15T10:00:00",
+    "vector_db_enabled": true,
+    "last_vectordb_sync": "2024-01-15T10:05:00"
+  },
+  "personal_info": { ... },
+  "work_experience": [ ... ],
+  "projects": [ ... ],
+  "skills": { ... },
+  "education": [ ... ]
+}
 ```
 
 ## 🤖 Agent Design
@@ -115,6 +174,36 @@ ResumeAgents/
 
 **Key Features**: English prompts, JSON responses, category-wide feedback
 
+## 🎯 **Experience Matching Strategy**
+
+### **Adaptive Search System**
+
+#### **Light Mode Search**
+```python
+def find_relevant_experiences_light(profile_data, question, question_type):
+    """Keyword-based experience matching for light mode"""
+    # 1. Extract keywords from question
+    # 2. Match against experience descriptions
+    # 3. Score by keyword frequency and position
+    # 4. Return top matches with basic relevance
+```
+
+#### **Advanced Mode Search**  
+```python
+def find_relevant_experiences_advanced(profile_name, question, question_type):
+    """Vector similarity search for advanced mode"""
+    # 1. Encode question into vector representation
+    # 2. Search FAISS index for similar experience vectors
+    # 3. Calculate semantic similarity scores
+    # 4. Return ranked results with confidence scores
+```
+
+### **Automatic Mode Detection**
+- **System Check**: Detect FAISS availability at startup
+- **User Preference**: Allow manual mode selection in profile creation
+- **Graceful Fallback**: Advanced mode falls back to light mode on errors
+- **Performance Optimization**: Cache vector searches for repeated queries
+
 ## 🔄 Workflow Design
 
 ### Sequential Execution Strategy
@@ -155,6 +244,33 @@ output_options = {
 
 **Guide-Only**: For users who want to write themselves with comprehensive guidance
 **Both**: For users who want guidance and final document (Guide is prerequisite for document creation)
+
+### Agent Context Generation Strategy
+
+#### **Light Mode Context**
+```python
+def get_agent_context_light(profile_data, agent_type, task_context):
+    """Generate agent context using JSON data only"""
+    return {
+        "mode": "light",
+        "candidate_summary": extract_summary_from_json(profile_data),
+        "relevant_experiences": keyword_match_experiences(profile_data, task_context),
+        "search_method": "keyword_matching"
+    }
+```
+
+#### **Advanced Mode Context**
+```python  
+def get_agent_context_advanced(profile_name, agent_type, task_context):
+    """Generate agent context using vector DB search"""
+    return {
+        "mode": "advanced", 
+        "candidate_summary": get_vectordb_summary(profile_name),
+        "relevant_experiences": semantic_search_experiences(profile_name, task_context),
+        "relevance_scores": [0.95, 0.87, 0.82],
+        "search_method": "semantic_similarity"
+    }
+```
 
 ## 🎯 Self-Introduction Writing Strategy
 
@@ -244,6 +360,18 @@ output_options = {
 - **OpenAI Models**: Multi-tier model system for different analysis depths
 - **Python 3.11+**: Main development language
 
+### Profile Management Technologies
+
+#### **Light Mode Dependencies (Built-in)**
+- **json**: Profile data storage and loading
+- **re**: Keyword matching and text processing
+- **pathlib**: File system operations
+
+#### **Advanced Mode Dependencies (Optional)**
+- **FAISS**: Vector similarity search for experience matching
+- **sentence-transformers**: Text embedding generation
+- **numpy**: Vector operations and similarity calculations
+
 ### Configuration Management
 - **Environment Variables**: Centralized in `.env` file
 - **Research Depth**: LOW/MEDIUM/HIGH configurations
@@ -251,15 +379,16 @@ output_options = {
   - Corresponding token limits and quality thresholds
 - **Model Classification**: Quick Think vs Deep Think vs Web Search models
 - **Quality Thresholds**: Category-specific evaluation standards
+- **Profile Mode**: Light vs Advanced mode selection
 
 ### Key Dependencies
 - **Pydantic**: Data validation and state management
 - **asyncio**: Asynchronous workflow execution
-- **FAISS**: Vector similarity search for experience matching
 - **python-dotenv**: Environment variable management
+- **Optional: FAISS + sentence-transformers**: Advanced vector search
 
 ---
 
-**Document Version**: 2.0  
-**Last Updated**: 2025-08-06  
-**Key Features**: Category-wise evaluation system, Sequential workflow optimization, Context-driven agent design, Multi-depth configuration 
+**Document Version**: 2.1  
+**Last Updated**: 2025-08-07  
+**Key Features**: Hybrid profile management, Optional vector DB integration, User mode selection, Graceful fallback system 

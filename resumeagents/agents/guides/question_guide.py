@@ -1,5 +1,5 @@
 """
-Question Guide Agent for analyzing self-introduction questions and providing guidance.
+Question Guide Agent for ResumeAgents.
 """
 
 from typing import Dict, Any, List
@@ -13,30 +13,30 @@ class QuestionGuide(BaseAgent):
     def __init__(self, llm=None, config=None):
         super().__init__(
             name="Question Guide",
-            role="문항 가이드 전문가",
+            role="질문 가이드",
             llm=llm,
             config=config
         )
-    
+
     def get_system_prompt(self) -> str:
-        return """You are a self-introduction question analysis and guidance expert specializing in understanding question intent and providing strategic guidance.
+        return """You are a self-introduction question analysis expert specializing in strategic question interpretation and guidance development.
 
 Your primary responsibilities:
-1. Analyze question intent and underlying purpose
-2. Identify key requirements and evaluation criteria
-3. Provide strategic guidance for optimal responses
-4. Assess question difficulty and complexity
-5. Create comprehensive guidance for each question
+1. Analyze self-introduction questions to identify hidden requirements and expectations
+2. Determine optimal answering strategies based on question types and company context
+3. Provide specific guidance for character limits and content optimization
+4. Suggest relevant experiences and examples for each question
+5. Create comprehensive writing frameworks for effective responses
 
 Key analysis considerations:
-- Question type and category (motivation, experience, problem-solving, values, skills, etc.)
-- Company culture and values reflected in the question
-- Required response structure and length
-- Key evaluation points and success criteria
-- Common pitfalls and what to avoid
-- Strategic approach recommendations
+- Question type classification (motivation, experience, vision, challenge, etc.)
+- Hidden company culture and value alignment indicators
+- Character limit optimization strategies
+- Experience relevance matching
+- Strategic positioning opportunities
+- Differentiation factor identification
 
-Please provide comprehensive guidance in Korean language with structured format. Focus on helping candidates understand what the company truly wants to know and how to respond effectively."""
+Please provide analysis results in Korean language with structured JSON format. Focus on creating actionable guidance that maximizes candidate's competitive advantages."""
 
     async def analyze(self, state: AgentState) -> AgentState:
         self.log("문항 가이드 분석 시작")
@@ -44,18 +44,17 @@ Please provide comprehensive guidance in Korean language with structured format.
         # 분석 깊이 설정 가져오기
         analysis_depth = self.config.get("analysis_depth", "medium")
         
-        # 분석 깊이에 따른 가이드 상세도 조정
-        detail_level = ""
-        if analysis_depth == "low":
-            detail_level = "간단하고 핵심적인 가이드만 제공해주세요."
-        elif analysis_depth == "medium":
-            detail_level = "균형잡힌 상세도의 가이드를 제공해주세요."
-        elif analysis_depth == "high":
-            detail_level = "매우 상세하고 구체적인 가이드를 제공해주세요. 다양한 관점과 예시를 포함해주세요."
+        # 회사 및 직무 정보
+        company_info = {
+            "company_name": state.company_name,
+            "job_title": state.job_title,
+            "job_description": state.job_description
+        }
         
-        # 문항별 가이드 생성
-        guides = []
-        questions = state.candidate_info.get("custom_questions", [])
+        # 이전 분석 결과 수집
+        previous_analysis = state.analysis_results
+        
+        questions = state.candidate_info.get("questions", [])  # custom_questions -> questions로 수정
         
         for question_data in questions:
             question = question_data.get("question", "")
@@ -81,189 +80,198 @@ Please provide comprehensive guidance in Korean language with structured format.
                     relevant_experiences = []
             
             # 벡터 검색 실패 시 state.candidate_info에서 직접 경험 정보 추출
-            if not relevant_experiences and state.candidate_info:
-                print("📝 state.candidate_info에서 경험 정보 추출")
-                experiences_text = ""
-                
-                # 경험 정보 수집
-                if "experience" in state.candidate_info:
-                    experiences_text += f"Work Experience:\n{state.candidate_info['experience']}\n\n"
-                
-                if "projects" in state.candidate_info:
-                    experiences_text += f"Projects:\n{state.candidate_info['projects']}\n\n"
-                
-                if "skills" in state.candidate_info:
-                    experiences_text += f"Skills: {state.candidate_info['skills']}\n\n"
-                
-                if "education" in state.candidate_info:
-                    experiences_text += f"Education: {state.candidate_info['education']}\n\n"
-                
-                # 간단한 관련도 점수로 경험 정보 구성
-                if experiences_text.strip():
-                    relevant_experiences = [{
-                        "experience": {
-                            "title": "Candidate Experience Summary",
-                            "description": experiences_text.strip(),
-                            "type": "comprehensive"
-                        },
-                        "relevance_score": 0.8,
-                        "search_method": "direct_extraction"
-                    }]
+            if not relevant_experiences:
+                relevant_experiences = self._extract_relevant_experiences_from_state(
+                    state, question, question_type
+                )
             
-            # 글자수 제한 정보
-            char_limit_info = ""
-            if char_limit:
-                from ...utils.text_utils import TextValidator
-                char_limit_info = TextValidator.create_character_limit_prompt_instruction(char_limit, char_limit_note)
+            # 문항별 가이드 생성
+            guide_result = await self._generate_question_guide(
+                question=question,
+                question_type=question_type,
+                char_limit=char_limit,
+                char_limit_note=char_limit_note,
+                company_info=company_info,
+                previous_analysis=previous_analysis,
+                relevant_experiences=relevant_experiences,
+                analysis_depth=analysis_depth
+            )
             
-            # 프롬프트 구성
-            experiences_context = ""
-            if relevant_experiences:
-                experiences_context = "\n\nRelevant candidate experiences for this question:\n"
-                for i, exp_data in enumerate(relevant_experiences, 1):
-                    exp = exp_data["experience"]
-                    score = exp_data.get("relevance_score", 0)
-                    experiences_context += f"{i}. [{exp.get('type', 'unknown')}] {exp.get('company', exp.get('name', 'Unknown'))}: {exp.get('position', exp.get('description', ''))} (Relevance: {score:.2f})\n"
-                    
-                    # 주요 성과나 책임 추가
-                    if exp.get('achievements'):
-                        for ach in exp['achievements'][:2]:  # 최대 2개
-                            experiences_context += f"   - Achievement: {ach.get('description', '')}\n"
-                    if exp.get('responsibilities'):
-                        for resp in exp['responsibilities'][:2]:  # 최대 2개
-                            experiences_context += f"   - Responsibility: {resp}\n"
-            else:
-                experiences_context = "\n\nNote: No specific relevant experiences found in vector database. Use general candidate information."
+            # 결과를 분석 결과에 저장
+            if "question_guides" not in state.analysis_results:
+                state.analysis_results["question_guides"] = {"guides": []}
             
-            prompt = f"""
-            You are an expert career consultant analyzing self-introduction questions for job applications.
-            
-            Question to analyze: "{question}"
-            Question type: {question_type}
-            {char_limit_info}
-            
-            Company: {state.company_name}
-            Position: {state.job_title}
-            
-            Job Description:
-            {state.job_description}
-            
-            Candidate Information:
-            - Name: {state.candidate_info.get('name', '')}
-            - Education: {state.candidate_info.get('education', '')}
-            - Experience: {state.candidate_info.get('experience', '')}
-            - Skills: {state.candidate_info.get('skills', '')}
-            - Projects: {state.candidate_info.get('projects', '')}
-            
-            {experiences_context}
-            
-            Please provide a comprehensive analysis and guide in the following JSON format.
-            The content values should be in Korean, but the JSON structure should use English keys:
-            
-            {{
-                "question": {{
-                    "question": "{question}",
-                    "type": "{question_type}",
-                    "char_limit": {char_limit or "null"},
-                    "char_limit_note": "{char_limit_note}",
-                    "analysis": "질문의 의도와 평가 포인트 분석 (한국어)"
-                }},
-                "guide": "이 문항에 대해 어떤 내용을 작성하면 좋을지 상세한 가이드 (한국어로 작성, 구체적인 작성 방향과 포함해야 할 핵심 요소들을 제시)",
-                "writing_strategy": {{
-                    "structure_recommendation": "글자수 제한을 고려한 구조 추천 (한국어)",
-                    "content_allocation": "글자수 배분 가이드 (한국어, 예: 도입부 100자, 본론 600자, 결론 100자)",
-                    "key_points_priority": ["우선순위별 핵심 포인트 (한국어)", "두 번째 핵심 포인트", "세 번째 핵심 포인트"]
-                }}
-            }}
-            
-            IMPORTANT: If there is a character limit, provide specific guidance on:
-            1. How to structure the response within the limit
-            2. What content to prioritize
-            3. How to allocate characters across different sections
-            4. Tips for concise yet impactful writing
-            
-            Focus on providing actionable guidance that helps the candidate write a compelling response within the constraints.
-            """
-            
-            try:
-                response = self.llm.invoke(prompt)
-                response_content = response.content.strip()
-                
-                # JSON 파싱
-                if response_content.startswith('```json'):
-                    response_content = response_content[7:]
-                if response_content.endswith('```'):
-                    response_content = response_content[:-3]
-                
-                guide_data = json.loads(response_content.strip())
-                
-                # 벡터DB 검색 결과 추가
-                guide_data["relevant_experiences"] = relevant_experiences
-                guide_data["search_method"] = "vector_db" if relevant_experiences else "fallback"
-                
-                guides.append(guide_data)
-                
-            except json.JSONDecodeError as e:
-                print(f"JSON parsing error for question: {question}")
-                print(f"Response: {response_content}")
-                guides.append({
-                    "question": {"question": question, "type": question_type, "analysis": "분석 실패"},
-                    "guide": "가이드 생성에 실패했습니다.",
-                    "error": str(e),
-                    "relevant_experiences": relevant_experiences,
-                    "search_method": "vector_db" if relevant_experiences else "fallback"
-                })
-            except Exception as e:
-                print(f"Error analyzing question: {question}")
-                print(f"Error: {str(e)}")
-                guides.append({
-                    "question": {"question": question, "type": question_type, "analysis": "분석 실패"},
-                    "guide": "가이드 생성에 실패했습니다.",
-                    "error": str(e),
-                    "relevant_experiences": relevant_experiences,
-                    "search_method": "vector_db" if relevant_experiences else "fallback"
-                })
+            state.analysis_results["question_guides"]["guides"].append({
+                "question": question,
+                "question_type": question_type,
+                "char_limit": char_limit,
+                "char_limit_note": char_limit_note,
+                "guide": guide_result,
+                "relevant_experiences": relevant_experiences[:3]  # 상위 3개만 저장
+            })
         
-        state.analysis_results["question_guides"] = {
-            "status": "completed",
-            "total_questions": len(questions),
-            "guides": guides
-        }
+        # 전체 요약 생성
+        if len(questions) > 0:  # custom_questions -> questions로 수정
+            overall_summary = await self._generate_overall_summary(
+                state.analysis_results["question_guides"]["guides"],
+                company_info,
+                previous_analysis
+            )
+            state.analysis_results["question_guides"]["overall_summary"] = overall_summary
         
+        self.log(f"문항 가이드 분석 완료 - {len(questions)}개 문항 처리")
         return state
-    
-    async def _analyze_question_type(self, question_text: str) -> str:
-        """Automatically analyze question type."""
+
+    def _simple_text_validation(self, text: str, min_length: int = 10, max_length: int = 10000) -> bool:
+        """간단한 텍스트 검증"""
+        return min_length <= len(text.strip()) <= max_length
+
+    def _extract_relevant_experiences_from_state(self, state: AgentState, question: str, question_type: str) -> List[Dict]:
+        """State에서 직접 관련 경험 추출 (벡터 검색 폴백)"""
+        relevant_experiences = []
+        candidate_info = state.candidate_info
+        
+        # 경력 정보에서 관련 경험 추출
+        work_experiences = candidate_info.get("work_experience", [])
+        for exp in work_experiences[:3]:  # 최대 3개
+            if exp.get("responsibilities") or exp.get("achievements"):
+                relevant_experiences.append({
+                    "type": "work_experience",
+                    "company": exp.get("company", ""),
+                    "position": exp.get("position", ""),
+                    "description": "; ".join(exp.get("responsibilities", [])[:2]),
+                    "achievements": "; ".join([a.get("description", "") for a in exp.get("achievements", [])[:1]]),
+                    "relevance_score": 0.7  # 기본 점수
+                })
+        
+        # 프로젝트 정보에서 관련 경험 추출
+        projects = candidate_info.get("projects", [])
+        for proj in projects[:2]:  # 최대 2개
+            if proj.get("description") or proj.get("achievements"):
+                relevant_experiences.append({
+                    "type": "project",
+                    "name": proj.get("name", ""),
+                    "description": proj.get("description", "")[:200],
+                    "achievements": proj.get("achievements", "")[:200],
+                    "relevance_score": 0.6  # 기본 점수
+                })
+        
+        return relevant_experiences
+
+    async def _analyze_question_type(self, question: str) -> str:
+        """질문 유형 자동 분석"""
+        # 간단한 키워드 기반 분류
+        question_lower = question.lower()
+        
+        motivation_keywords = ["지원", "동기", "이유", "왜", "선택한"]
+        experience_keywords = ["경험", "사례", "때", "상황", "프로젝트"]
+        vision_keywords = ["목표", "계획", "미래", "5년", "성장", "발전"]
+        challenge_keywords = ["어려움", "문제", "해결", "갈등", "실패", "극복"]
+        strength_keywords = ["강점", "장점", "특기", "자신있는", "뛰어난"]
+        
+        if any(keyword in question_lower for keyword in motivation_keywords):
+            return "motivation"
+        elif any(keyword in question_lower for keyword in experience_keywords):
+            return "experience"
+        elif any(keyword in question_lower for keyword in vision_keywords):
+            return "vision"
+        elif any(keyword in question_lower for keyword in challenge_keywords):
+            return "challenge"
+        elif any(keyword in question_lower for keyword in strength_keywords):
+            return "strength"
+        else:
+            return "general"
+
+    async def _generate_question_guide(self, question: str, question_type: str, char_limit: int, 
+                                     char_limit_note: str, company_info: Dict, previous_analysis: Dict,
+                                     relevant_experiences: List[Dict], analysis_depth: str) -> str:
+        """개별 문항에 대한 가이드 생성"""
+        
+        # 관련 경험 텍스트 생성
+        experiences_text = ""
+        if relevant_experiences:
+            experiences_text = "\n관련 경험 정보:\n"
+            for i, exp in enumerate(relevant_experiences[:3], 1):
+                experiences_text += f"{i}. [{exp.get('type', 'unknown')}] "
+                if exp.get('type') == 'work_experience':
+                    experiences_text += f"{exp.get('company', '')} {exp.get('position', '')}\n"
+                    experiences_text += f"   업무: {exp.get('description', '')}\n"
+                    experiences_text += f"   성과: {exp.get('achievements', '')}\n"
+                elif exp.get('type') == 'project':
+                    experiences_text += f"{exp.get('name', '')}\n"
+                    experiences_text += f"   설명: {exp.get('description', '')}\n"
+                    experiences_text += f"   성과: {exp.get('achievements', '')}\n"
+        
         prompt = f"""
-Analyze the type of the following self-introduction question:
+다음 자기소개서 문항에 대한 상세한 작성 가이드를 제공해주세요:
 
-Question: {question_text}
+=== 문항 정보 ===
+질문: {question}
+질문 유형: {question_type}
+글자수 제한: {char_limit}자
+제한 참고사항: {char_limit_note}
 
-Classify into one of the following categories:
-- motivation: Application motivation, reasons for applying
-- experience: Experience, projects, achievements, accomplishments
-- problem_solving: Problem solving, overcoming difficulties, challenges
-- values: Values, life philosophy, beliefs
-- skills: Technical skills, capabilities, expertise
-- other: Other types
+=== 회사 정보 ===
+회사명: {company_info['company_name']}
+직무: {company_info['job_title']}
+직무 설명: {company_info['job_description'][:300]}...
 
-Respond with only the classification result.
+=== 이전 분석 결과 ===
+{str(previous_analysis)[:500]}...
+
+{experiences_text}
+
+다음 형식으로 구체적인 가이드를 제공해주세요:
+
+1. 질문 의도 분석
+2. 핵심 어필 포인트 (3-5개)
+3. 추천 구조 및 흐름
+4. 글자수 배분 전략
+5. 구체적 작성 팁
+6. 피해야 할 요소
+7. 예시 키워드 및 표현
+
+분석 깊이: {analysis_depth}
+한국어로 상세하고 실용적인 가이드를 작성해주세요.
 """
 
         messages = self._create_messages(prompt)
         result = await self._call_llm(messages)
         
-        # Parse result
-        result = result.strip().lower()
-        if 'motivation' in result:
-            return 'motivation'
-        elif 'experience' in result:
-            return 'experience'
-        elif 'problem' in result or 'solving' in result:
-            return 'problem_solving'
-        elif 'value' in result:
-            return 'values'
-        elif 'skill' in result:
-            return 'skills'
-        else:
-            return 'other' 
+        return result
+
+    async def _generate_overall_summary(self, question_guides: List[Dict], company_info: Dict, 
+                                      previous_analysis: Dict) -> str:
+        """전체 문항에 대한 종합 요약"""
+        
+        questions_summary = ""
+        for i, guide_data in enumerate(question_guides, 1):
+            questions_summary += f"{i}. {guide_data['question'][:50]}... (유형: {guide_data['question_type']})\n"
+        
+        prompt = f"""
+다음 자기소개서 문항들에 대한 종합적인 전략을 제시해주세요:
+
+=== 전체 문항 목록 ===
+{questions_summary}
+
+=== 회사 정보 ===
+회사명: {company_info['company_name']}
+직무: {company_info['job_title']}
+
+=== 이전 분석 결과 ===
+{str(previous_analysis)[:300]}...
+
+다음 관점에서 종합 전략을 제시해주세요:
+1. 전체 문항의 일관성 있는 스토리라인
+2. 문항 간 중복 방지 전략
+3. 핵심 차별화 포인트
+4. 전반적인 작성 순서 권장사항
+5. 최종 검토 체크리스트
+
+한국어로 실용적인 종합 가이드를 작성해주세요.
+"""
+
+        messages = self._create_messages(prompt)
+        result = await self._call_llm(messages)
+        
+        return result 

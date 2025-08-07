@@ -1,518 +1,566 @@
 """
-Profile Manager for managing candidate profiles systematically.
+Hybrid Profile Manager for ResumeAgents.
+Supports both Light Mode (JSON only) and Advanced Mode (JSON + Vector DB).
 """
 
 import json
 import os
-from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
+from datetime import datetime
 
-# 벡터DB는 선택적 import (라이브러리가 없어도 기본 기능 동작)
+# Optional vector DB imports
 try:
-    from .experience_vectordb import ExperienceVectorDB
+    from .unified_vectordb import UnifiedVectorDB
     VECTORDB_AVAILABLE = True
 except ImportError:
     VECTORDB_AVAILABLE = False
 
 
 class ProfileManager:
-    """Manager for candidate profiles and experiences."""
+    """
+    Hybrid Profile Manager supporting Light and Advanced modes.
     
-    def __init__(self, profiles_dir: str = "profiles", enable_vectordb: bool = True):
+    Light Mode: JSON-only storage with keyword matching
+    Advanced Mode: JSON + Vector DB with semantic search
+    """
+    
+    def __init__(self, profiles_dir: str = "profiles", mode: str = "auto"):
+        """
+        Initialize ProfileManager with mode selection.
+        
+        Args:
+            profiles_dir: Directory for storing profile JSON files
+            mode: "light", "advanced", or "auto" (detect based on dependencies)
+        """
         self.profiles_dir = Path(profiles_dir)
         self.profiles_dir.mkdir(exist_ok=True)
         
-        # 벡터DB 초기화 (선택적)
-        self.vectordb = None
-        self.enable_vectordb = enable_vectordb and VECTORDB_AVAILABLE
-        
-        if self.enable_vectordb:
-            try:
-                self.vectordb = ExperienceVectorDB()
-                print("✅ 벡터DB 초기화 완료 - 고급 경험 매칭 활성화")
-            except Exception as e:
-                print(f"⚠️  벡터DB 초기화 실패 - 기본 모드로 동작: {e}")
-                self.enable_vectordb = False
+        # Mode determination
+        if mode == "auto":
+            self.mode = "advanced" if VECTORDB_AVAILABLE else "light"
+        elif mode == "advanced" and not VECTORDB_AVAILABLE:
+            print("⚠️  Advanced mode requested but vector DB dependencies not available. Falling back to Light mode.")
+            self.mode = "light"
         else:
-            if not VECTORDB_AVAILABLE:
-                print("ℹ️  벡터DB 라이브러리 없음 - 기본 모드로 동작")
+            self.mode = mode
+        
+        # Initialize vector DB for advanced mode
+        self.vectordb = None
+        if self.mode == "advanced":
+            try:
+                self.vectordb = UnifiedVectorDB()
+                print(f"✅ ProfileManager initialized in Advanced mode (JSON + Vector DB)")
+            except Exception as e:
+                print(f"⚠️  Vector DB initialization failed: {e}. Falling back to Light mode.")
+                self.mode = "light"
+                self.vectordb = None
+        
+        if self.mode == "light":
+            print(f"✅ ProfileManager initialized in Light mode (JSON only)")
+    
+    def get_mode_info(self) -> Dict[str, Any]:
+        """Get current mode information."""
+        return {
+            "mode": self.mode,
+            "vectordb_available": VECTORDB_AVAILABLE,
+            "vectordb_active": self.vectordb is not None,
+            "storage": "JSON + Vector DB" if self.mode == "advanced" else "JSON only",
+            "search": "Semantic similarity" if self.mode == "advanced" else "Keyword matching"
+        }
     
     def create_profile_template(self) -> Dict[str, Any]:
-        """Create a structured profile template."""
+        """Create a structured profile template with metadata."""
         return {
+            "profile_metadata": {
+                "name": "",
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat(),
+                "vector_db_enabled": self.mode == "advanced",
+                "last_vectordb_sync": None,
+                "version": "2.1"
+            },
             "personal_info": {
                 "name": "",
-                "age": "",
                 "email": "",
                 "phone": "",
                 "location": ""
             },
             "education": [
                 {
-                    "degree": "학사",
-                    "major": "컴퓨터공학",
-                    "university": "서울대학교",
-                    "graduation_year": "2020",
-                    "gpa": "3.8/4.5",
-                    "relevant_courses": ["데이터구조", "알고리즘", "소프트웨어공학"],
-                    "honors": ["졸업우등상", "학과우수상"]
+                    "degree": "",
+                    "major": "",
+                    "university": "",
+                    "graduation_year": "",
+                    "gpa": "",
+                    "relevant_courses": [],
+                    "honors": []
                 }
             ],
             "work_experience": [
                 {
-                    "company": "ABC테크",
-                    "position": "주니어 개발자",
+                    "company": "",
+                    "position": "",
                     "duration": {
-                        "start": "2021-03",
-                        "end": "2023-12"
+                        "start": "",
+                        "end": ""
                     },
-                    "department": "모바일개발팀",
-                    "responsibilities": [
-                        "Android 앱 개발 및 유지보수",
-                        "RESTful API 연동",
-                        "코드 리뷰 및 품질 관리"
-                    ],
+                    "department": "",
+                    "responsibilities": [],
                     "achievements": [
                         {
-                            "description": "사용자 10만명 달성",
-                            "metrics": "MAU 100,000명",
-                            "impact": "매출 30% 증가 기여"
-                        },
-                        {
-                            "description": "앱 성능 최적화",
-                            "metrics": "로딩 시간 50% 단축",
-                            "impact": "사용자 만족도 4.2→4.7점 향상"
+                            "description": "",
+                            "metrics": "",
+                            "impact": ""
                         }
                     ],
-                    "technologies": ["Java", "Kotlin", "Android", "Firebase"],
-                    "team_size": "5명",
-                    "key_projects": ["모바일 앱 리뉴얼", "결제 시스템 개발"]
+                    "technologies": [],
+                    "team_size": "",
+                    "key_projects": []
                 }
             ],
             "projects": [
                 {
-                    "name": "AI 기반 추천 시스템",
-                    "type": "개인 프로젝트",
+                    "name": "",
+                    "type": "",
                     "duration": {
-                        "start": "2023-01",
-                        "end": "2023-06"
+                        "start": "",
+                        "end": ""
                     },
-                    "description": "머신러닝을 활용한 상품 추천 시스템 개발",
-                    "role": "Full-stack 개발자",
-                    "technologies": ["Python", "TensorFlow", "Django", "PostgreSQL"],
-                    "achievements": [
-                        {
-                            "description": "추천 정확도 향상",
-                            "metrics": "정확도 85% 달성",
-                            "impact": "클릭률 25% 증가"
-                        }
-                    ],
-                    "github_url": "https://github.com/user/recommendation-system",
-                    "demo_url": "https://demo.example.com",
-                    "challenges": ["데이터 전처리", "모델 최적화", "실시간 추천"],
-                    "learnings": ["머신러닝 파이프라인 구축", "대용량 데이터 처리"]
+                    "description": "",
+                    "role": "",
+                    "technologies": [],
+                    "achievements": "",
+                    "github_url": "",
+                    "demo_url": "",
+                    "team_size": ""
                 }
             ],
             "skills": {
-                "programming_languages": [
-                    {"name": "Java", "proficiency": "고급", "years": 3},
-                    {"name": "Python", "proficiency": "중급", "years": 2},
-                    {"name": "JavaScript", "proficiency": "중급", "years": 1}
-                ],
-                "frameworks": [
-                    {"name": "Spring Boot", "proficiency": "중급", "years": 2},
-                    {"name": "React", "proficiency": "초급", "years": 1}
-                ],
-                "databases": [
-                    {"name": "MySQL", "proficiency": "중급", "years": 2},
-                    {"name": "PostgreSQL", "proficiency": "초급", "years": 1}
-                ],
-                "tools": [
-                    {"name": "Git", "proficiency": "고급", "years": 3},
-                    {"name": "Docker", "proficiency": "중급", "years": 1}
-                ],
-                "soft_skills": [
-                    "팀워크", "커뮤니케이션", "문제해결", "리더십", "학습능력"
-                ]
+                "programming_languages": [],
+                "frameworks": [],
+                "databases": [],
+                "tools": [],
+                "cloud_platforms": []
             },
             "certifications": [
                 {
-                    "name": "정보처리기사",
-                    "issuer": "한국산업인력공단",
-                    "date": "2020-08",
-                    "validity": "평생"
+                    "name": "",
+                    "issuer": "",
+                    "date": "",
+                    "expiry": "",
+                    "score": ""
                 }
             ],
-            "languages": [
+            "awards": [
                 {
-                    "language": "한국어",
-                    "proficiency": "원어민"
-                },
-                {
-                    "language": "영어",
-                    "proficiency": "중급",
-                    "test_score": "TOEIC 850"
+                    "name": "",
+                    "issuer": "",
+                    "date": "",
+                    "description": ""
                 }
             ],
-            "achievements": [
-                {
-                    "title": "사내 해커톤 1위",
-                    "date": "2022-11",
-                    "description": "AI 챗봇 서비스 개발로 1위 수상",
-                    "recognition": "CEO 특별상"
-                }
-            ],
-            "interests": [
-                "머신러닝", "오픈소스 기여", "기술 블로그 작성", "스타트업"
-            ],
+            "interests": [],
             "career_goals": {
-                "short_term": "풀스택 개발자로서 전문성 강화",
-                "long_term": "AI/ML 분야 전문가로 성장",
-                "target_companies": ["네이버", "카카오", "삼성전자"],
-                "preferred_roles": ["시니어 개발자", "테크리드"]
+                "short_term": "",
+                "long_term": "",
+                "target_companies": [],
+                "preferred_roles": []
             },
             "portfolio_links": {
-                "github": "https://github.com/username",
-                "blog": "https://blog.example.com",
-                "linkedin": "https://linkedin.com/in/username"
-            },
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
-            "version": "1.0",
-            "vectordb_synced": False  # 벡터DB 동기화 상태
+                "github": "",
+                "blog": "",
+                "linkedin": "",
+                "portfolio": ""
+            }
         }
     
-    def save_profile(self, profile_name: str, profile_data: Dict[str, Any], sync_to_vectordb: bool = True) -> Path:
-        """Save profile to JSON file and optionally sync to vector database."""
-        profile_data["updated_at"] = datetime.now().isoformat()
+    def save_profile(self, profile_data: Dict[str, Any], profile_name: str = None) -> str:
+        """
+        Save profile with automatic vector DB sync in advanced mode.
         
-        # JSON 파일 저장
-        profile_file = self.profiles_dir / f"{profile_name}.json"
-        with open(profile_file, 'w', encoding='utf-8') as f:
+        Args:
+            profile_data: Profile data dictionary
+            profile_name: Optional profile name (extracted from data if not provided)
+            
+        Returns:
+            Path to saved profile file
+        """
+        # Extract profile name
+        if not profile_name:
+            profile_name = profile_data.get("profile_metadata", {}).get("name") or \
+                          profile_data.get("personal_info", {}).get("name", "unnamed_profile")
+        
+        # Update metadata
+        if "profile_metadata" not in profile_data:
+            profile_data["profile_metadata"] = {}
+        
+        profile_data["profile_metadata"].update({
+            "name": profile_name,
+            "updated_at": datetime.now().isoformat(),
+            "vector_db_enabled": self.mode == "advanced"
+        })
+        
+        # Save JSON file
+        profile_path = self.profiles_dir / f"{profile_name}_profile.json"
+        with open(profile_path, 'w', encoding='utf-8') as f:
             json.dump(profile_data, f, ensure_ascii=False, indent=2)
         
-        print(f"📁 프로필 저장 완료: {profile_file}")
-        
-        # 벡터DB 동기화
-        if sync_to_vectordb and self.enable_vectordb:
-            self._sync_profile_to_vectordb(profile_name, profile_data)
-        
-        return profile_file
-    
-    def load_profile(self, profile_name: str, auto_sync_vectordb: bool = True) -> Dict[str, Any]:
-        """Load profile from JSON file and ensure vector DB is synced."""
-        profile_file = self.profiles_dir / f"{profile_name}.json"
-        
-        if not profile_file.exists():
-            raise FileNotFoundError(f"프로필을 찾을 수 없습니다: {profile_file}")
-        
-        with open(profile_file, 'r', encoding='utf-8') as f:
-            profile_data = json.load(f)
-        
-        # 벡터DB 동기화 확인 및 자동 동기화
-        if auto_sync_vectordb and self.enable_vectordb:
-            if not profile_data.get("vectordb_synced", False):
-                print(f"🔄 프로필 '{profile_name}'을 벡터DB에 동기화 중...")
-                self._sync_profile_to_vectordb(profile_name, profile_data)
+        # Sync to vector DB in advanced mode
+        if self.mode == "advanced" and self.vectordb:
+            try:
+                self.vectordb.add_profile_to_vectordb(profile_data, profile_name)
+                profile_data["profile_metadata"]["last_vectordb_sync"] = datetime.now().isoformat()
                 
-                # 동기화 상태 업데이트
-                profile_data["vectordb_synced"] = True
-                self.save_profile(profile_name, profile_data, sync_to_vectordb=False)
+                # Re-save with updated sync timestamp
+                with open(profile_path, 'w', encoding='utf-8') as f:
+                    json.dump(profile_data, f, ensure_ascii=False, indent=2)
+                    
+                print(f"✅ Profile '{profile_name}' saved and synced to vector DB")
+            except Exception as e:
+                print(f"⚠️  Vector DB sync failed: {e}. Profile saved as JSON only.")
+        else:
+            print(f"✅ Profile '{profile_name}' saved in Light mode (JSON only)")
         
-        return profile_data
+        return str(profile_path)
     
-    def _sync_profile_to_vectordb(self, profile_name: str, profile_data: Dict[str, Any]) -> bool:
-        """Sync profile experiences to vector database."""
-        if not self.enable_vectordb:
-            return False
+    def load_profile(self, profile_name: str) -> Optional[Dict[str, Any]]:
+        """Load profile from JSON file."""
+        profile_path = self.profiles_dir / f"{profile_name}_profile.json"
+        
+        if not profile_path.exists():
+            return None
         
         try:
-            # 프로필 ID 생성 (중복 방지용)
-            profile_id = f"profile_{profile_name}_{profile_data.get('updated_at', '')}"
-            
-            # 기존 동일 프로필 경험 제거 (업데이트 시)
-            self._remove_profile_from_vectordb(profile_name)
-            
-            # 새로운 경험 추가
-            experience_ids = []
-            
-            # 직장 경험 추가
-            for i, exp in enumerate(profile_data.get("work_experience", [])):
-                exp_with_metadata = {
-                    **exp, 
-                    "type": "work_experience",
-                    "profile_name": profile_name,
-                    "profile_id": profile_id,
-                    "experience_index": i
-                }
-                exp_id = self.vectordb.add_experience(exp_with_metadata)
-                experience_ids.append(exp_id)
-            
-            # 프로젝트 경험 추가
-            for i, proj in enumerate(profile_data.get("projects", [])):
-                proj_with_metadata = {
-                    **proj, 
-                    "type": "project",
-                    "profile_name": profile_name,
-                    "profile_id": profile_id,
-                    "experience_index": i
-                }
-                exp_id = self.vectordb.add_experience(proj_with_metadata)
-                experience_ids.append(exp_id)
-            
-            # 교육 경험 추가
-            for i, edu in enumerate(profile_data.get("education", [])):
-                edu_with_metadata = {
-                    **edu, 
-                    "type": "education",
-                    "profile_name": profile_name,
-                    "profile_id": profile_id,
-                    "experience_index": i
-                }
-                exp_id = self.vectordb.add_experience(edu_with_metadata)
-                experience_ids.append(exp_id)
-            
-            # 벡터DB 저장
-            self.vectordb.save_db()
-            
-            print(f"🚀 벡터DB 동기화 완료: {len(experience_ids)}개 경험 추가")
-            return True
-            
+            with open(profile_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
         except Exception as e:
-            print(f"❌ 벡터DB 동기화 실패: {e}")
-            return False
+            print(f"❌ Failed to load profile '{profile_name}': {e}")
+            return None
     
-    def _remove_profile_from_vectordb(self, profile_name: str):
-        """Remove existing profile experiences from vector database."""
-        if not self.enable_vectordb:
-            return
+    def list_profiles(self) -> List[Dict[str, Any]]:
+        """List all available profiles with metadata."""
+        profiles = []
         
-        # 현재 FAISS는 개별 삭제를 지원하지 않으므로
-        # 향후 업그레이드 시 구현 예정
-        # 지금은 전체 재구축으로 처리
-        pass
+        for profile_file in self.profiles_dir.glob("*_profile.json"):
+            try:
+                with open(profile_file, 'r', encoding='utf-8') as f:
+                    profile_data = json.load(f)
+                    
+                metadata = profile_data.get("profile_metadata", {})
+                profiles.append({
+                    "name": metadata.get("name", profile_file.stem.replace("_profile", "")),
+                    "file": str(profile_file),
+                    "created_at": metadata.get("created_at", "Unknown"),
+                    "updated_at": metadata.get("updated_at", "Unknown"),
+                    "vector_db_enabled": metadata.get("vector_db_enabled", False),
+                    "last_vectordb_sync": metadata.get("last_vectordb_sync")
+                })
+            except Exception as e:
+                print(f"⚠️  Error reading profile {profile_file}: {e}")
+        
+        return sorted(profiles, key=lambda x: x["updated_at"], reverse=True)
     
-    def find_relevant_experiences_for_question(self, profile_name: str, question: str, question_type: str = "general", top_k: int = 3) -> List[Dict[str, Any]]:
-        """Find relevant experiences for a specific question using vector search."""
-        if not self.enable_vectordb:
-            # 벡터DB가 없으면 기본 방식으로 폴백
-            return self._fallback_experience_search(profile_name, question)
+    def find_relevant_experiences_for_question(self, profile_name: str, question: str, 
+                                             question_type: str = "general", top_k: int = 3, 
+                                             search_mode: str = "hybrid") -> List[Dict[str, Any]]:
+        """
+        Find relevant experiences using mode-appropriate search.
         
+        Args:
+            profile_name: Name of the profile
+            question: Question text
+            question_type: Type of question
+            top_k: Number of results to return
+            search_mode: "semantic", "keyword", "hybrid" (Advanced mode only)
+            
+        Returns:
+            List of relevant experiences with relevance scores
+        """
+        if self.mode == "advanced" and self.vectordb:
+            return self._find_experiences_advanced(profile_name, question, question_type, top_k, search_mode)
+        else:
+            return self._find_experiences_light(profile_name, question, question_type, top_k)
+    
+    def _find_experiences_advanced(self, profile_name: str, question: str, 
+                                 question_type: str, top_k: int, search_mode: str = "hybrid") -> List[Dict[str, Any]]:
+        """Advanced mode: Vector similarity search with data/AI optimized parameters."""
         try:
-            # 프로필별 필터링을 위한 검색
-            relevant_experiences = self.vectordb.find_experiences_for_question(
-                question=question,
-                question_type=question_type,
-                top_k=top_k * 2  # 더 많이 검색해서 프로필별 필터링
+            # 데이터/AI 특화 질문 유형별 최소 점수 조정
+            min_score_map = {
+                # 기본 질문 유형
+                "motivation": 0.12,        # 동기 관련은 낮은 임계값
+                "experience": 0.15,        # 경험 관련은 중간 임계값
+                "challenge": 0.13,         # 도전/문제해결은 중간 임계값
+                "strength": 0.14,          # 강점은 중간 임계값
+                "general": 0.15,           # 일반적인 질문
+                
+                # === 데이터/AI 특화 질문 유형 ===
+                # 기술적 경험
+                "data_analysis": 0.18,     # 데이터 분석 경험 (높은 정확도 요구)
+                "machine_learning": 0.17,  # 머신러닝 경험
+                "data_engineering": 0.16,  # 데이터 엔지니어링
+                "statistics": 0.15,        # 통계 관련
+                "programming": 0.16,       # 프로그래밍 경험
+                "visualization": 0.14,     # 시각화 경험
+                "database": 0.15,          # 데이터베이스 경험
+                
+                # 프로젝트/성과
+                "ml_project": 0.17,        # ML 프로젝트
+                "data_project": 0.16,      # 데이터 프로젝트
+                "analytics_project": 0.15, # 분석 프로젝트
+                "kaggle": 0.14,            # 캐글 경진대회 (창의적 접근 허용)
+                "research": 0.16,          # 연구 경험
+                
+                # 도구/기술
+                "python": 0.16,            # Python 경험
+                "sql": 0.15,               # SQL 경험
+                "spark": 0.17,             # Spark/빅데이터
+                "cloud": 0.15,             # 클라우드 경험
+                "mlops": 0.16,             # MLOps 경험
+                
+                # 비즈니스/도메인
+                "business_analytics": 0.14, # 비즈니스 분석
+                "ab_testing": 0.15,         # A/B 테스트
+                "recommendation": 0.16,     # 추천시스템
+                "forecasting": 0.15,        # 예측/예보
+                "optimization": 0.15        # 최적화
+            }
+            
+            min_score = min_score_map.get(question_type, 0.15)
+            
+            # 데이터/AI 키워드가 포함된 경우 임계값 조정
+            data_ai_indicators = [
+                "데이터", "분석", "머신러닝", "딥러닝", "AI", "모델", "예측", 
+                "통계", "python", "sql", "pandas", "tensorflow", "spark"
+            ]
+            
+            question_lower = question.lower()
+            if any(indicator in question_lower for indicator in data_ai_indicators):
+                min_score = max(min_score - 0.02, 0.10)  # 데이터/AI 관련 질문은 조금 더 관대하게
+            
+            # Use UnifiedVectorDB for direct semantic search with improved parameters
+            search_results = self.vectordb.search_unified_profile(
+                query=question,
+                profile_name=profile_name,
+                top_k=top_k,
+                min_score=min_score,
+                search_mode=search_mode  # 새로운 검색 모드 파라미터
             )
             
-            # 해당 프로필의 경험만 필터링
-            filtered_experiences = []
-            for exp_data in relevant_experiences:
-                if exp_data["experience"].get("profile_name") == profile_name:
-                    filtered_experiences.append(exp_data)
-                    if len(filtered_experiences) >= top_k:
+            # Convert to expected format with full data loading
+            experiences = []
+            for i, result in enumerate(search_results):
+                # 완전한 데이터 로드 (메모리 최적화된 버전)
+                entry_id = None
+                for j, metadata in enumerate(self.vectordb.metadata):
+                    if (metadata.get("profile_name") == result["metadata"].get("profile_name") and 
+                        metadata.get("type") == result["metadata"].get("type") and
+                        metadata.get("timestamp") == result["metadata"].get("timestamp")):
+                        entry_id = j
                         break
+                
+                if entry_id is not None:
+                    full_data = self.vectordb.get_entry_with_data(entry_id)
+                    data = full_data.get("data", {})
+                else:
+                    data = {}  # 폴백
+                
+                experience_data = {
+                    "type": result["metadata"].get("type", "unknown"),
+                    "data": data,
+                    "relevance_score": result["score"],
+                    "search_method": result.get("search_method", "unknown"),
+                    "text": result.get("text", "")[:100] + "...",  # 디버깅용
+                    "question_type": question_type,  # 질문 유형 추가
+                    "min_score_used": min_score     # 사용된 임계값 추가
+                }
+                
+                # 하이브리드 검색 결과인 경우 추가 정보 포함
+                if "semantic_score" in result:
+                    experience_data.update({
+                        "semantic_score": result.get("semantic_score", 0.0),
+                        "keyword_score": result.get("keyword_score", 0.0),
+                        "combined_score": result.get("combined_score", result["score"])
+                    })
+                elif "original_score" in result:
+                    experience_data.update({
+                        "original_score": result.get("original_score", result["score"]),
+                        "type_weight": result.get("type_weight", 1.0)
+                    })
+                
+                # 데이터/AI 특화 정보 추가
+                if "keyword_bonus" in result:
+                    experience_data["keyword_bonus"] = result["keyword_bonus"]
+                
+                experiences.append(experience_data)
             
-            return filtered_experiences
+            return experiences
             
         except Exception as e:
-            print(f"⚠️  벡터 검색 실패, 기본 검색 사용: {e}")
-            return self._fallback_experience_search(profile_name, question)
+            print(f"⚠️  Advanced search failed: {e}. Falling back to light mode.")
+            return self._find_experiences_light(profile_name, question, question_type, top_k)
     
-    def _fallback_experience_search(self, profile_name: str, question: str) -> List[Dict[str, Any]]:
-        """Fallback experience search without vector database."""
-        try:
-            profile_data = self.load_profile(profile_name, auto_sync_vectordb=False)
-            
-            # 간단한 키워드 매칭
-            question_lower = question.lower()
-            relevant_experiences = []
-            
-            # 직장 경험 검색
-            for exp in profile_data.get("work_experience", []):
-                relevance = 0
-                exp_text = f"{exp.get('company', '')} {exp.get('position', '')} {' '.join(exp.get('responsibilities', []))}".lower()
-                
-                # 간단한 키워드 매칭 점수
-                for word in question_lower.split():
-                    if word in exp_text:
-                        relevance += 1
-                
-                if relevance > 0:
-                    relevant_experiences.append({
-                        "experience": {**exp, "type": "work_experience"},
-                        "relevance_score": relevance / len(question_lower.split()),
-                        "match_reason": f"키워드 매칭: {relevance}개 일치"
-                    })
-            
-            # 프로젝트 경험 검색
-            for proj in profile_data.get("projects", []):
-                relevance = 0
-                proj_text = f"{proj.get('name', '')} {proj.get('description', '')} {' '.join(proj.get('technologies', []))}".lower()
-                
-                for word in question_lower.split():
-                    if word in proj_text:
-                        relevance += 1
-                
-                if relevance > 0:
-                    relevant_experiences.append({
-                        "experience": {**proj, "type": "project"},
-                        "relevance_score": relevance / len(question_lower.split()),
-                        "match_reason": f"키워드 매칭: {relevance}개 일치"
-                    })
-            
-            # 관련성 순으로 정렬
-            relevant_experiences.sort(key=lambda x: x["relevance_score"], reverse=True)
-            
-            return relevant_experiences[:3]
-            
-        except Exception as e:
-            print(f"❌ 기본 검색도 실패: {e}")
+    def _find_experiences_light(self, profile_name: str, question: str, 
+                              question_type: str, top_k: int) -> List[Dict[str, Any]]:
+        """Light mode: Keyword-based search."""
+        profile_data = self.load_profile(profile_name)
+        if not profile_data:
             return []
-    
-    def list_profiles(self) -> List[str]:
-        """List all available profiles."""
-        profiles = []
-        for file in self.profiles_dir.glob("*.json"):
-            profiles.append(file.stem)
-        return profiles
-    
-    def get_profile_info(self, profile_name: str) -> Dict[str, Any]:
-        """Get profile summary information."""
-        try:
-            profile_data = self.load_profile(profile_name, auto_sync_vectordb=False)
-            
-            return {
-                "name": profile_data.get("personal_info", {}).get("name", profile_name),
-                "experience_count": len(profile_data.get("work_experience", [])),
-                "project_count": len(profile_data.get("projects", [])),
-                "last_updated": profile_data.get("updated_at", "알 수 없음"),
-                "vectordb_synced": profile_data.get("vectordb_synced", False),
-                "has_vectordb": self.enable_vectordb
-            }
-        except Exception as e:
-            return {
-                "name": profile_name,
-                "error": str(e),
-                "vectordb_synced": False,
-                "has_vectordb": self.enable_vectordb
-            }
-    
-    def convert_to_agent_format(self, profile_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Convert structured profile to agent-compatible format."""
-        # 경력 정보 변환
-        experience_text = ""
-        for exp in profile_data.get("work_experience", []):
-            experience_text += f"- {exp['company']} ({exp['duration']['start']}~{exp['duration']['end']}): {exp['position']}\n"
-            for resp in exp.get('responsibilities', []):
-                experience_text += f"  * {resp}\n"
-            for ach in exp.get('achievements', []):
-                experience_text += f"  * {ach['description']} ({ach['metrics']})\n"
-            experience_text += "\n"
         
-        # 프로젝트 정보 변환
-        projects_text = ""
-        for proj in profile_data.get("projects", []):
-            projects_text += f"- {proj['name']} ({proj['type']})\n"
-            projects_text += f"  * {proj['description']}\n"
-            projects_text += f"  * 기술스택: {', '.join(proj['technologies'])}\n"
-            for ach in proj.get('achievements', []):
-                projects_text += f"  * {ach['description']} ({ach['metrics']})\n"
-            projects_text += "\n"
+        # Extract keywords from question
+        keywords = self._extract_keywords(question, question_type)
         
-        # 스킬 정보 변환
-        skills_text = ""
-        for category, skills in profile_data.get("skills", {}).items():
-            if category == "soft_skills":
-                skills_text += f"{category}: {', '.join(skills)}\n"
-            else:
-                skill_names = [skill['name'] for skill in skills] if isinstance(skills, list) else skills
-                skills_text += f"{category}: {', '.join(skill_names)}\n"
-        
-        return {
-            "name": profile_data.get("personal_info", {}).get("name", ""),
-            "education": self._format_education(profile_data.get("education", [])),
-            "experience": experience_text.strip(),
-            "skills": skills_text.strip(),
-            "projects": projects_text.strip(),
-            "achievements": self._format_achievements(profile_data.get("achievements", [])),
-            "certifications": self._format_certifications(profile_data.get("certifications", [])),
-            "portfolio_links": profile_data.get("portfolio_links", {}),
-            "career_goals": profile_data.get("career_goals", {}),
-            "structured_data": profile_data  # 원본 구조화된 데이터도 포함
-        }
-    
-    def _format_education(self, education_list: List[Dict]) -> str:
-        """Format education information."""
-        education_text = ""
-        for edu in education_list:
-            education_text += f"{edu['university']} {edu['major']} {edu['degree']} ({edu['graduation_year']})\n"
-        return education_text.strip()
-    
-    def _format_achievements(self, achievements_list: List[Dict]) -> str:
-        """Format achievements information."""
-        achievements_text = ""
-        for ach in achievements_list:
-            achievements_text += f"- {ach['title']} ({ach['date']}): {ach['description']}\n"
-        return achievements_text.strip()
-    
-    def _format_certifications(self, certifications_list: List[Dict]) -> str:
-        """Format certifications information."""
-        cert_text = ""
-        for cert in certifications_list:
-            cert_text += f"- {cert['name']} ({cert['issuer']}, {cert['date']})\n"
-        return cert_text.strip()
-    
-    def create_interactive_profile(self) -> Dict[str, Any]:
-        """Create profile through interactive input."""
-        print("=== 구조화된 프로필 생성 ===")
-        
-        profile = self.create_profile_template()
-        
-        # 기본 정보 입력
-        print("\n1. 기본 정보")
-        profile["personal_info"]["name"] = input("이름: ")
-        profile["personal_info"]["age"] = input("나이: ")
-        
-        # 경력 정보 입력 (간단화)
-        print("\n2. 주요 경력 (최대 3개)")
         experiences = []
-        for i in range(3):
-            print(f"\n경력 {i+1} (없으면 Enter):")
-            company = input("회사명: ")
-            if not company:
-                break
-            
-            position = input("직책: ")
-            start_date = input("시작일 (YYYY-MM): ")
-            end_date = input("종료일 (YYYY-MM, 현재 재직중이면 'current'): ")
-            
-            responsibilities = []
-            print("주요 업무 (최대 3개, 없으면 Enter):")
-            for j in range(3):
-                resp = input(f"업무 {j+1}: ")
-                if resp:
-                    responsibilities.append(resp)
-            
-            experiences.append({
-                "company": company,
-                "position": position,
-                "duration": {"start": start_date, "end": end_date},
-                "responsibilities": responsibilities,
-                "achievements": [],
-                "technologies": []
-            })
         
-        profile["work_experience"] = experiences
+        # Search work experiences
+        for exp in profile_data.get("work_experience", []):
+            score = self._calculate_keyword_score(exp, keywords)
+            if score > 0:
+                experiences.append({
+                    "type": "work_experience",
+                    "data": exp,
+                    "relevance_score": score,
+                    "search_method": "keyword_matching"
+                })
         
-        # 스킬 입력 (간단화)
-        print("\n3. 주요 스킬")
-        skills_input = input("주요 기술 스킬 (쉼표로 구분): ")
-        if skills_input:
-            skills = [{"name": skill.strip(), "proficiency": "중급", "years": 1} 
-                     for skill in skills_input.split(',')]
-            profile["skills"]["programming_languages"] = skills
+        # Search projects
+        for proj in profile_data.get("projects", []):
+            score = self._calculate_keyword_score(proj, keywords)
+            if score > 0:
+                experiences.append({
+                    "type": "project",
+                    "data": proj,
+                    "relevance_score": score,
+                    "search_method": "keyword_matching"
+                })
         
-        return profile 
+        # Sort by relevance score and return top_k
+        experiences.sort(key=lambda x: x["relevance_score"], reverse=True)
+        return experiences[:top_k]
+    
+    def _extract_keywords(self, question: str, question_type: str) -> List[str]:
+        """Extract relevant keywords from question."""
+        import re
+        
+        # Basic keyword extraction
+        words = re.findall(r'\b[가-힣a-zA-Z]+\b', question.lower())
+        
+        # Filter out common words
+        stop_words = {'이', '그', '저', '것', '수', '있', '하', '되', '될', '한', '일', '때', '중', '및', '등', 'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'}
+        keywords = [word for word in words if len(word) > 1 and word not in stop_words]
+        
+        # Add question type specific keywords
+        type_keywords = {
+            "motivation": ["동기", "이유", "지원"],
+            "experience": ["경험", "프로젝트", "업무"],
+            "challenge": ["어려움", "문제", "해결"],
+            "strength": ["강점", "장점", "특기"]
+        }
+        
+        if question_type in type_keywords:
+            keywords.extend(type_keywords[question_type])
+        
+        return list(set(keywords))  # Remove duplicates
+    
+    def _calculate_keyword_score(self, item_data: Dict[str, Any], keywords: List[str]) -> float:
+        """Calculate relevance score based on keyword matching."""
+        if not keywords:
+            return 0.0
+        
+        # Convert item data to searchable text
+        searchable_text = ""
+        
+        # Add various fields to search text
+        for field in ["company", "position", "name", "description", "role"]:
+            if field in item_data and item_data[field]:
+                searchable_text += f" {item_data[field]}"
+        
+        # Add list fields
+        for field in ["responsibilities", "technologies", "achievements"]:
+            if field in item_data and isinstance(item_data[field], list):
+                for item in item_data[field]:
+                    if isinstance(item, str):
+                        searchable_text += f" {item}"
+                    elif isinstance(item, dict):
+                        searchable_text += f" {item.get('description', '')}"
+        
+        searchable_text = searchable_text.lower()
+        
+        # Calculate score
+        score = 0.0
+        for keyword in keywords:
+            if keyword in searchable_text:
+                # Higher score for exact matches
+                count = searchable_text.count(keyword)
+                score += count * 0.1
+        
+        # Normalize score
+        return min(score, 1.0)
+    
+    def switch_mode(self, new_mode: str) -> bool:
+        """
+        Switch between light and advanced modes.
+        
+        Args:
+            new_mode: "light" or "advanced"
+            
+        Returns:
+            True if switch successful, False otherwise
+        """
+        if new_mode == self.mode:
+            print(f"Already in {new_mode} mode")
+            return True
+        
+        if new_mode == "advanced" and not VECTORDB_AVAILABLE:
+            print("❌ Cannot switch to advanced mode: Vector DB dependencies not available")
+            return False
+        
+        old_mode = self.mode
+        self.mode = new_mode
+        
+        if new_mode == "advanced":
+            try:
+                self.vectordb = UnifiedVectorDB()
+                print(f"✅ Switched from {old_mode} to {new_mode} mode")
+                return True
+            except Exception as e:
+                print(f"❌ Failed to switch to advanced mode: {e}")
+                self.mode = old_mode
+                return False
+        else:
+            self.vectordb = None
+            print(f"✅ Switched from {old_mode} to {new_mode} mode")
+            return True
+    
+    def sync_all_profiles_to_vectordb(self) -> Dict[str, Any]:
+        """Sync all profiles to vector DB (advanced mode only)."""
+        if self.mode != "advanced" or not self.vectordb:
+            return {"error": "Advanced mode not available"}
+        
+        profiles = self.list_profiles()
+        results = {"synced": 0, "failed": 0, "errors": []}
+        
+        for profile_info in profiles:
+            try:
+                profile_name = profile_info["name"]
+                profile_data = self.load_profile(profile_name)
+                
+                if profile_data:
+                    self.vectordb.add_profile_to_vectordb(profile_data, profile_name)
+                    
+                    # Update sync timestamp
+                    profile_data["profile_metadata"]["last_vectordb_sync"] = datetime.now().isoformat()
+                    self.save_profile(profile_data, profile_name)
+                    
+                    results["synced"] += 1
+                else:
+                    results["failed"] += 1
+                    results["errors"].append(f"Could not load profile: {profile_name}")
+                    
+            except Exception as e:
+                results["failed"] += 1
+                results["errors"].append(f"Failed to sync {profile_info['name']}: {e}")
+        
+        print(f"✅ Sync complete: {results['synced']} synced, {results['failed']} failed")
+        return results 

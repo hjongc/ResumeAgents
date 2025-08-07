@@ -1,5 +1,6 @@
 """
 ResumeAgents Graph Implementation with Stage-wise Evaluation and Revision System.
+통합 벡터DB를 활용한 에이전트별 맞춤형 컨텍스트 제공 시스템.
 """
 
 import asyncio
@@ -19,13 +20,33 @@ from ..agents.evaluators import (
 )
 from ..utils import get_model_for_agent, supports_temperature
 
+# 통합 벡터DB import
+try:
+    from ..utils.unified_vectordb import UnifiedVectorDB
+    UNIFIED_VECTORDB_AVAILABLE = True
+except ImportError:
+    UNIFIED_VECTORDB_AVAILABLE = False
+
 
 class ResumeAgentsGraph:
-    """Main graph for ResumeAgents framework with stage-wise evaluation."""
+    """Main graph for ResumeAgents framework with stage-wise evaluation and unified vector DB integration."""
     
     def __init__(self, debug: bool = False, config: Optional[Dict[str, Any]] = None):
-        self.debug = debug
+        
         self.config = config or {}
+        
+        # 통합 벡터DB 초기화
+        self.unified_vectordb = None
+        if UNIFIED_VECTORDB_AVAILABLE:
+            try:
+                self.unified_vectordb = UnifiedVectorDB()
+                if debug:
+                    print("✅ 통합 벡터DB 활성화 - 에이전트별 맞춤형 컨텍스트 제공")
+            except Exception as e:
+                if debug:
+                    print(f"⚠️  통합 벡터DB 초기화 실패: {e}")
+        elif debug:
+            print("ℹ️  통합 벡터DB 라이브러리 없음 - 기본 프로필 정보만 사용")
         
         # Research depth에 따른 모델 선택
         research_depth = self.config.get("research_depth", "MEDIUM")
@@ -66,20 +87,20 @@ class ResumeAgentsGraph:
         
         # Research depth 정보 출력
         if self.debug:
-            print(f"[DEBUG] Research Depth: {research_depth}")
-            print(f"[DEBUG] Analysis Depth: {self.config.get('analysis_depth', 'balanced')}")
-            print(f"[DEBUG] Web Search: {'Enabled' if self.config.get('web_search_enabled', True) else 'Disabled'}")
-            print(f"[DEBUG] Quality Threshold: {self.config.get('quality_threshold', 0.8)}")
-            print(f"[DEBUG] Max Tokens: {self.config.get('max_tokens', 4000)}")
-            print(f"[DEBUG] Max Revision Rounds: {self.config.get('max_revision_rounds', 2)}")
+            print(f"Research Depth: {research_depth}")
+            print(f"Quick Think Model: {quick_model}")
+            print(f"Deep Think Model: {deep_model}")
+            print(f"Web Search Model: {web_search_model}")
+            print(f"Max Tokens: {self.config.get('max_tokens', 4000)}")
+            print(f"Max Revision Rounds: {self.config.get('max_revision_rounds', 2)}")
         
         # Initialize agents and evaluators
         self.agents = self._initialize_agents()
         self.evaluators = self._initialize_evaluators()
         
-        # Build graph
+        # Build the graph
         self.graph = self._build_graph()
-    
+
     def log(self, message: str):
         """Log message if debug is enabled."""
         if self.debug:
@@ -347,16 +368,16 @@ class ResumeAgentsGraph:
         
         # === Phase 1: Analysis Team (External Information Analysis) ===
         # Company → Market → JD 순서로 컨텍스트 누적
-        graph.add_node("company_analysis", self.agents["company_analyst"].analyze)
+        graph.add_node("company_analysis", self._company_analysis_node)
         graph.add_node("market_analysis", self.agents["market_analyst"].analyze)
-        graph.add_node("jd_analysis", self.agents["jd_analyst"].analyze)
+        graph.add_node("jd_analysis", self._jd_analysis_node)
         
         # Analysis Phase Evaluation
         graph.add_node("analysis_evaluation", self._create_stage_evaluation_node("analysis", "analysis_team", "analysis_evaluator"))
         graph.add_node("analysis_revision", self._create_stage_revision_node("analysis_team"))
         
         # === Phase 2: Matching Team (Candidate-Company Matching) ===
-        graph.add_node("candidate_analysis", self.agents["candidate_analyst"].analyze)
+        graph.add_node("candidate_analysis", self._candidate_analysis_node)
         graph.add_node("culture_analysis", self.agents["culture_analyst"].analyze)
         graph.add_node("trend_analysis", self.agents["trend_analyst"].analyze)
         
@@ -373,7 +394,7 @@ class ResumeAgentsGraph:
         graph.add_node("strategy_revision", self._create_stage_revision_node("strategy_team"))
         
         # === Phase 4: Guide Team (Writing Guidance) ===
-        graph.add_node("question_guide", self.agents["question_guide"].analyze)
+        graph.add_node("question_guide", self._question_guide_node)
         graph.add_node("experience_guide", self.agents["experience_guide"].analyze)
         graph.add_node("writing_guide", self.agents["writing_guide"].analyze)
         
@@ -506,3 +527,142 @@ class ResumeAgentsGraph:
         except Exception as e:
             self.log(f"❌ 워크플로우 실행 중 오류: {e}")
             raise 
+
+    def _get_agent_context(self, state: AgentState, agent_type: str, task_context: str = None) -> Dict[str, Any]:
+        """
+        에이전트별 맞춤형 컨텍스트 생성 (DEVELOPMENT_STRATEGY.md 준수)
+        
+        Args:
+            state: 현재 상태
+            agent_type: 에이전트 유형
+            task_context: 작업 컨텍스트
+        
+        Returns:
+            에이전트별 맞춤형 컨텍스트
+        """
+        # 프로필 이름 추출
+        profile_name = state.candidate_info.get("name", "default_profile")
+        
+        # 통합 벡터DB 사용 가능한 경우
+        if self.unified_vectordb:
+            try:
+                context = self.unified_vectordb.get_agent_context(
+                    profile_name=profile_name,
+                    agent_type=agent_type,
+                    task_context=task_context
+                )
+                
+                # 기본 상태 정보도 포함
+                context.update({
+                    "company_name": state.company_name,
+                    "job_title": state.job_title,
+                    "job_description": state.job_description,
+                    "analysis_results": state.analysis_results
+                })
+                
+                return context
+                
+            except Exception as e:
+                if self.debug:
+                    print(f"⚠️  벡터DB 컨텍스트 생성 실패: {e}")
+        
+        # 폴백: 기본 candidate_info 사용
+        return {
+            "profile_name": profile_name,
+            "agent_type": agent_type,
+            "task_context": task_context,
+            "candidate_info": state.candidate_info,
+            "company_name": state.company_name,
+            "job_title": state.job_title,
+            "job_description": state.job_description,
+            "analysis_results": state.analysis_results,
+            "vectordb_enabled": False
+        }
+
+    # 에이전트 노드들을 컨텍스트 기반으로 수정
+    async def _company_analysis_node(self, state: AgentState) -> AgentState:
+        """회사 분석 노드 - 통합 벡터DB 컨텍스트 활용"""
+        if self.debug:
+            print("🏢 회사 분석 시작")
+        
+        # 에이전트별 맞춤 컨텍스트 생성
+        context = self._get_agent_context(
+            state=state,
+            agent_type="company_analyst",
+            task_context="회사 분석에 필요한 경험과 목표"
+        )
+        
+        # 컨텍스트를 state에 임시 저장
+        state.agent_context = context
+        
+        # 회사 분석 실행
+        result_state = await self.agents["company_analyst"].analyze(state)
+        
+        # 임시 컨텍스트 제거
+        if hasattr(result_state, 'agent_context'):
+            delattr(result_state, 'agent_context')
+        
+        return result_state
+
+    async def _jd_analysis_node(self, state: AgentState) -> AgentState:
+        """JD 분석 노드 - 통합 벡터DB 컨텍스트 활용"""
+        if self.debug:
+            print("📋 JD 분석 시작")
+        
+        # 에이전트별 맞춤 컨텍스트 생성
+        context = self._get_agent_context(
+            state=state,
+            agent_type="jd_analyst",
+            task_context="직무 요구사항에 맞는 기술과 경험"
+        )
+        
+        state.agent_context = context
+        result_state = await self.agents["jd_analyst"].analyze(state)
+        
+        if hasattr(result_state, 'agent_context'):
+            delattr(result_state, 'agent_context')
+        
+        return result_state
+
+    async def _candidate_analysis_node(self, state: AgentState) -> AgentState:
+        """지원자 분석 노드 - 통합 벡터DB 컨텍스트 활용"""
+        if self.debug:
+            print("👤 지원자 분석 시작")
+        
+        # 에이전트별 맞춤 컨텍스트 생성
+        context = self._get_agent_context(
+            state=state,
+            agent_type="candidate_analyst",
+            task_context="지원자 경험과 스킬 분석"
+        )
+        
+        state.agent_context = context
+        result_state = await self.agents["candidate_analyst"].analyze(state)
+        
+        if hasattr(result_state, 'agent_context'):
+            delattr(result_state, 'agent_context')
+        
+        return result_state
+
+    async def _question_guide_node(self, state: AgentState) -> AgentState:
+        """질문 가이드 노드 - 통합 벡터DB 컨텍스트 활용"""
+        if self.debug:
+            print("❓ 질문 가이드 분석 시작")
+        
+        # 질문별 맞춤 컨텍스트 생성
+        questions = state.candidate_info.get("questions", [])
+        question_context = " ".join([q.get("question", "") for q in questions])
+        
+        context = self._get_agent_context(
+            state=state,
+            agent_type="question_guide",
+            task_context=f"자기소개서 질문 분석: {question_context}"
+        )
+        
+        state.agent_context = context
+        result_state = await self.agents["question_guide"].analyze(state)
+        
+        if hasattr(result_state, 'agent_context'):
+            delattr(result_state, 'agent_context')
+        
+        return result_state 

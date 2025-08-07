@@ -1,132 +1,138 @@
 """
-Utilities for ResumeAgents framework.
+Utility functions and model management for ResumeAgents.
+DEVELOPMENT_STRATEGY.md 준수 - ProfileManager 중심 구조
 """
 
-from .output_manager import OutputManager
+import os
+from typing import Dict, Any, Optional, List
+from ..default_config import get_depth_config
+
+# DEVELOPMENT_STRATEGY.md에 명시된 핵심 모듈들
 from .profile_manager import ProfileManager
-from .text_utils import TextValidator
+from .output_manager import OutputManager
 
-# ===== 모델 분류 상수 =====
-# Quick Think: 웹 검색 지원 모델 (빠른 처리)
-QUICK_THINK_MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-4.1"]
+# 간단한 텍스트 검증 클래스 (text_utils 대체)
+class TextValidator:
+    """간단한 텍스트 검증 클래스"""
+    
+    @staticmethod
+    def validate_text_length(text: str, min_length: int = 10, max_length: int = 10000) -> bool:
+        """텍스트 길이 검증"""
+        return min_length <= len(text.strip()) <= max_length
+    
+    @staticmethod
+    def clean_text(text: str) -> str:
+        """텍스트 정리"""
+        return text.strip()
 
-# Deep Think: Reasoning 모델 (깊은 분석)
-DEEP_THINK_MODELS = ["o1-mini", "o4-mini", "gpt-4o"]
-
-# 웹 검색 지원 모델
-WEB_SEARCH_MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-4.1"]
-
-# Temperature 미지원 모델
-TEMPERATURE_UNSUPPORTED_MODELS = [
-    "gpt-4o-mini",
-    "gpt-4o-mini-search-preview", 
-    "o4-mini",
-    "o1-mini",
-    "o1-preview"
-]
 
 def supports_temperature(model_name: str) -> bool:
-    """Check if a model supports temperature parameter."""
-    for unsupported in TEMPERATURE_UNSUPPORTED_MODELS:
-        if unsupported in model_name.lower():
-            return False
-    return True
-
-def supports_web_search(model_name: str) -> bool:
-    """Check if a model supports web search."""
-    return model_name in WEB_SEARCH_MODELS
-
-def get_research_depth_config(research_depth: str) -> dict:
     """
-    Get configuration based on research depth preset from .env settings.
+    Check if the model supports temperature parameter.
     
     Args:
-        research_depth: LOW, MEDIUM, or HIGH
+        model_name: Name of the model to check
         
     Returns:
-        dict: Configuration for the research depth
+        True if model supports temperature, False otherwise
     """
-    from ..default_config import get_depth_config
+    # o3, o4 시리즈는 temperature 지원하지 않음
+    if model_name.startswith(("o3", "o4")):
+        return False
     
-    # .env에서 depth별 설정 가져오기
-    depth_config = get_depth_config(research_depth)
+    # GPT 모델들은 temperature 지원
+    if model_name.startswith("gpt"):
+        return True
     
-    # 단계별 모델 매핑 (작업 특성에 따라)
-    analysis_models = {
-        # 웹 검색이 필요한 에이전트들
-        "company_analysis": depth_config["web_search_model"],
-        "market_analysis": depth_config["web_search_model"], 
-        "trend_analysis": depth_config["web_search_model"],
-        
-        # 빠른 처리가 필요한 에이전트들 (Quick Think)
-        "jd_analysis": depth_config["quick_think_model"],
-        
-        # 깊은 추론이 필요한 에이전트들 (Deep Think)
-        "candidate_analysis": depth_config["deep_think_model"],
-        "culture_analysis": depth_config["deep_think_model"],
-    }
+    # Claude 모델들도 temperature 지원
+    if model_name.startswith("claude"):
+        return True
     
-    research_models = {
-        # 연구는 깊은 추론이 필요
-        "strength_research": depth_config["deep_think_model"],
-        "weakness_research": depth_config["deep_think_model"],
-    }
-    
-    production_models = {
-        # 문서 작성은 깊은 추론이 필요
-        "document_writing": depth_config["deep_think_model"],
-        "quality_management": depth_config["deep_think_model"],
-    }
-    
-    guide_models = {
-        # 가이드 생성은 깊은 추론이 필요
-        "question_guide": depth_config["deep_think_model"],
-        "experience_guide": depth_config["deep_think_model"],
-        "writing_guide": depth_config["deep_think_model"],
-    }
-    
-    # 전체 설정 반환
-    return {
-        **depth_config,  # .env에서 가져온 기본 설정
-        "analysis_models": analysis_models,
-        "research_models": research_models,
-        "production_models": production_models,
-        "guide_models": guide_models,
-    }
+    # 기본적으로 지원한다고 가정
+    return True
 
-def get_model_for_agent(agent_name: str, config: dict) -> str:
+
+def get_model_for_agent(agent_name: str, config: Dict[str, Any]) -> str:
     """
-    Get appropriate model for specific agent.
+    Get the appropriate model for a specific agent based on its type and configuration.
+    DEVELOPMENT_STRATEGY.md의 에이전트 분류에 따른 모델 선택
     
     Args:
         agent_name: Name of the agent
-        config: Configuration dictionary
+        config: Configuration dictionary containing model settings
         
     Returns:
-        str: Model name to use
+        Model name to use for the agent
     """
-    # 단계별 모델 설정에서 찾기
-    for phase in ["analysis_models", "research_models", "production_models", "guide_models"]:
-        phase_models = config.get(phase, {})
-        if agent_name in phase_models:
-            model = phase_models[agent_name]
-            
-            # 웹 검색이 필요한 에이전트인지 확인
-            web_search_agents = ["company_analysis", "market_analysis", "trend_analysis"]
-            if agent_name in web_search_agents and not supports_web_search(model):
-                return config.get("web_search_model", "gpt-4o-mini")
-            
-            return model
+    # 웹 검색이 필요한 에이전트들 (Analysis Team)
+    web_search_agents = [
+        "company_analysis", "company_analyst", 
+        "market_analysis", "market_analyst",
+        "jd_analysis", "jd_analyst"
+    ]
     
-    # 기본 모델 반환
-    return config.get("deep_think_model", "o4-mini")
+    # 깊은 사고가 필요한 에이전트들 (Strategy Team, Production Team)
+    deep_think_agents = [
+        "strength_research", "strength_researcher",
+        "weakness_research", "weakness_researcher", 
+        "quality_management", "quality_manager",
+        "document_writing", "document_writer"
+    ]
+    
+    # 빠른 처리가 필요한 에이전트들 (Matching Team, Guide Team)
+    quick_think_agents = [
+        "candidate_analysis", "candidate_analyst",
+        "culture_analysis", "culture_analyst", 
+        "trend_analysis", "trend_analyst",
+        "question_guide", "experience_guide", "writing_guide"
+    ]
+    
+    # 에이전트 유형에 따른 모델 선택
+    if agent_name in web_search_agents:
+        return config.get("web_search_model", "gpt-4o-mini")
+    elif agent_name in deep_think_agents:
+        return config.get("deep_think_model", "o4-mini")
+    elif agent_name in quick_think_agents:
+        return config.get("quick_think_model", "gpt-4o-mini")
+    else:
+        # 기본값: Quick Think 모델 사용
+        return config.get("quick_think_model", "gpt-4o-mini")
 
+
+def get_research_depth_config(research_depth: str) -> Dict[str, Any]:
+    """
+    Get comprehensive configuration for a specific research depth.
+    DEVELOPMENT_STRATEGY.md의 Multi-depth configuration 구현
+    
+    Args:
+        research_depth: Research depth level (LOW, MEDIUM, HIGH)
+        
+    Returns:
+        Complete configuration dictionary for the depth level
+    """
+    depth_config = get_depth_config(research_depth)
+    
+    # 모델 분류를 위한 매핑 추가
+    config_with_models = depth_config.copy()
+    
+    # DEVELOPMENT_STRATEGY.md에 명시된 설정들 추가
+    config_with_models.update({
+        # 기본 모델 정보는 이미 depth_config에 있음
+        "web_search_enabled": True,
+        "debug": False,
+        "temperature": 0.7,
+        "web_search_max_tokens": depth_config.get("max_tokens", 4000) - 1000  # 웹 검색용은 조금 적게
+    })
+    
+    return config_with_models
+
+
+# DEVELOPMENT_STRATEGY.md에 명시된 핵심 모듈들 Export
 __all__ = [
-    "OutputManager", 
-    "ProfileManager", 
-    "TextValidator", 
-    "supports_temperature", 
-    "supports_web_search", 
-    "get_research_depth_config", 
-    "get_model_for_agent"
+    "ProfileManager",  # 문서에 명시된 핵심 모듈
+    "OutputManager",   # 문서에 명시된 핵심 모듈
+    "TextValidator",
+    "supports_temperature",
+    "get_model_for_agent", 
+    "get_research_depth_config"
 ] 

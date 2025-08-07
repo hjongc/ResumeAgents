@@ -141,4 +141,7 @@ Thumbs.db
 # Project specific
 *.log
 .env.local
-.env.production outputs/
+.env.production 
+outputs/
+db/
+test_*_db/

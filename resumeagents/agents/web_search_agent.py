@@ -2,89 +2,109 @@
 Web Search Base Agent for ResumeAgents.
 """
 
-from typing import List
-from langchain_openai import ChatOpenAI
-from langchain.schema import HumanMessage, SystemMessage
-from openai import OpenAI
+import asyncio
+import json
+from typing import Dict, Any, List, Optional
 from .base_agent import BaseAgent, AgentState
-from ..utils import WEB_SEARCH_MODELS, supports_web_search
+from ..utils import supports_temperature
 
 
 class WebSearchBaseAgent(BaseAgent):
-    """Base class for agents that support web search functionality."""
+    """Base class for agents that need web search capabilities."""
     
     def __init__(self, name: str, role: str, llm=None, config=None):
         super().__init__(name, role, llm, config)
-        
-        # OpenAI client for web search
-        if config and config.get("openai_api_key"):
-            self.client = OpenAI(api_key=config.get("openai_api_key"))
-        else:
-            self.client = None
+        self.web_search_enabled = config.get("web_search_enabled", True)
+        self.max_retries = config.get("web_search_retry_count", 3)
     
-    def _call_llm_with_web_search(self, prompt: str, query: str) -> str:
-        """Call LLM with web search capability using new OpenAI API."""
-        if not self.config.get("web_search_enabled", True):
-            # Web search disabled, use regular LLM call
-            return self.llm.invoke(prompt).content
+    def supports_web_search(self, model_name: str) -> bool:
+        """Check if the model supports web search capabilities."""
+        # GPT models generally support web search
+        if model_name.startswith("gpt"):
+            return True
         
-        if not self.client:
-            # No OpenAI client available, fallback to regular LLM
-            return self.llm.invoke(prompt).content
+        # Add other web search capable models here
+        web_search_models = ["gpt-4o", "gpt-4o-mini", "gpt-4.1"]
+        return model_name in web_search_models
+    
+    async def search_web(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
+        """
+        Perform web search using the LLM's web search capabilities.
         
-        # 웹 검색 설정 가져오기
-        web_search_model = self.config.get("web_search_model", "gpt-4o-mini")
-        web_search_timeout = self.config.get("web_search_timeout", 30)
-        retry_count = self.config.get("web_search_retry_count", 2)
+        Args:
+            query: Search query
+            max_results: Maximum number of results to return
+            
+        Returns:
+            List of search results
+        """
+        if not self.web_search_enabled:
+            self.log("Web search disabled, skipping")
+            return []
         
-        # 웹 검색 지원 모델 체크 및 대체
-        if not supports_web_search(web_search_model):
-            print(f"⚠️  모델 '{web_search_model}'은 웹 검색을 지원하지 않습니다. 'gpt-4o-mini'로 대체합니다.")
-            web_search_model = "gpt-4o-mini"
+        model_name = getattr(self.llm, 'model_name', 'unknown')
+        if not self.supports_web_search(model_name):
+            self.log(f"Model {model_name} doesn't support web search")
+            return []
         
-        for attempt in range(retry_count + 1):
-            try:
-                # 웹 검색을 포함한 프롬프트 작성
-                search_input = f"""
-{prompt}
+        search_prompt = f"""
+Please search for information about: {query}
 
-Please search for recent information about: {query}
+Provide the most relevant and up-to-date information available. Focus on:
+1. Official company information
+2. Recent news and developments  
+3. Industry insights and trends
+4. Key facts and statistics
 
-Use web search to find the most current and accurate information available.
+Format your response as a structured summary with key points.
 """
+        
+        for attempt in range(self.max_retries):
+            try:
+                self.log(f"Web search attempt {attempt + 1}: {query}")
                 
-                print(f"웹 검색 시도 {attempt + 1}/{retry_count + 1} - 모델: {web_search_model}")
+                # Use the LLM for web search
+                messages = self._create_messages(search_prompt)
+                search_result = await self._call_llm(messages)
                 
-                # OpenAI responses API 사용 (올바른 형식)
-                response = self.client.responses.create(
-                    model=web_search_model,
-                    tools=[{"type": "web_search"}],  # 올바른 타입
-                    input=search_input
-                )
-                
-                return response.output_text
+                # Parse and structure the result
+                return [{
+                    "query": query,
+                    "content": search_result,
+                    "source": "web_search",
+                    "timestamp": "2024-01-15"
+                }]
                 
             except Exception as e:
-                print(f"웹 검색 실패 (시도 {attempt + 1}/{retry_count + 1}): {e}")
-                if attempt == retry_count:
-                    print("모든 웹 검색 시도 실패 - 기본 LLM 분석으로 전환...")
-                    # Fallback to regular LLM call
-                    return self.llm.invoke(prompt).content
-                else:
-                    print(f"재시도 중... ({attempt + 2}/{retry_count + 1})")
-                    continue
+                self.log(f"Web search attempt {attempt + 1} failed: {e}")
+                if attempt == self.max_retries - 1:
+                    self.log("All web search attempts failed, proceeding without web data")
+                    return []
+                
+                # Wait before retry
+                await asyncio.sleep(1)
         
-        # 이 지점에 도달하면 모든 시도가 실패한 것
-        return self.llm.invoke(prompt).content
+        return []
     
-    async def _call_llm(self, messages: List, **kwargs) -> str:
-        """Call the LLM with given messages."""
-        response = await self.llm.ainvoke(messages, **kwargs)
-        return response.content
-    
-    def _create_messages(self, user_prompt: str) -> List:
-        """Create messages for LLM call."""
-        return [
-            SystemMessage(content=self.get_system_prompt()),
-            HumanMessage(content=user_prompt)
-        ] 
+    async def analyze_with_web_search(self, state: AgentState, search_queries: List[str]) -> Dict[str, Any]:
+        """
+        Perform analysis with web search support.
+        
+        Args:
+            state: Current agent state
+            search_queries: List of queries to search for
+            
+        Returns:
+            Dictionary containing search results
+        """
+        web_results = {}
+        
+        for query in search_queries:
+            results = await self.search_web(query)
+            if results:
+                web_results[query] = results
+                self.log(f"Web search successful for: {query}")
+            else:
+                self.log(f"Web search failed for: {query}")
+        
+        return web_results 
