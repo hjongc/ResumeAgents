@@ -95,19 +95,16 @@ def create_example_data():
             "custom_questions": [
                 {
                     "question": "지원 동기와 입사 후 포부를 기술해 주십시오.",
-                    "type": "auto",
                     "char_limit": 1000,
                     "char_limit_note": "공백 포함 1000자 이내"
                 },
                 {
                     "question": "본인의 핵심역량과 관련된 경험을 구체적으로 설명해 주십시오.",
-                    "type": "auto", 
                     "char_limit": 1500,
                     "char_limit_note": "공백 포함 1500자 이내"
                 },
                 {
                     "question": "팀워크를 발휘한 경험과 그 과정에서 배운 점을 서술해 주십시오.",
-                    "type": "auto",
                     "char_limit": 800,
                     "char_limit_note": "공백 포함 800자 이내"
                 }
@@ -183,7 +180,6 @@ def create_custom_data():
         
         question_data = {
             "question": question,
-            "type": "auto"
         }
         
         if char_limit:
@@ -244,7 +240,9 @@ async def run_resume_agents(data: Dict[str, Any], config: Dict[str, Any] = None)
             print("=== 자기소개서 문항 가이드 ===")
             question_guides = analysis_results["question_guides"]["guides"]
             for i, guide_data in enumerate(question_guides):
-                print(f"\n문항 {i+1}: {guide_data['question']['question']}")
+                q = guide_data.get('question')
+                q_text = q.get('question') if isinstance(q, dict) else (q or '')
+                print(f"\n문항 {i+1}: {q_text}")
                 print("-" * 40)
                 print(guide_data['guide'])
                 print()
@@ -421,7 +419,6 @@ def main():
                     
                     question_data = {
                         "question": question,
-                        "type": "auto"
                     }
                     
                     if char_limit:
@@ -495,7 +492,6 @@ def main():
             
             question_data = {
                 "question": question,
-                "type": "auto"
             }
             
             if char_limit:

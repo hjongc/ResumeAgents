@@ -64,7 +64,6 @@ Please provide comprehensive experience guidance for the following question:
 Company: {state.company_name}
 Position: {state.job_title}
 Question: {question['question']}
-Question Type: {question.get('type', 'general')}
 
 Question Analysis:
 {question_guide if question_guide else "분석 정보 없음"}

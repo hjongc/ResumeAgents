@@ -12,7 +12,7 @@ from ..agents.base_agent import AgentState
 from ..agents.analysis import CompanyAnalyst, JDAnalyst, MarketAnalyst
 from ..agents.matching import CandidateAnalyst, CultureAnalyst, TrendAnalyst
 from ..agents.strategy import StrengthResearcher, WeaknessResearcher
-from ..agents.production import DocumentWriter, QualityManager
+from ..agents.production import ResumeWriter, CoverLetterWriter, QualityManager
 from ..agents.guides import QuestionGuide, ExperienceGuide, WritingGuide
 from ..agents.evaluators import (
     AnalysisEvaluator, MatchingEvaluator, StrategyEvaluator, 
@@ -33,6 +33,7 @@ class ResumeAgentsGraph:
     
     def __init__(self, debug: bool = False, config: Optional[Dict[str, Any]] = None):
         
+        self.debug = debug  # debug 속성을 먼저 정의
         self.config = config or {}
         
         # 통합 벡터DB 초기화
@@ -201,8 +202,12 @@ class ResumeAgentsGraph:
         )
         
         # Production agents
-        agents["document_writer"] = DocumentWriter(
+        agents["document_writer"] = ResumeWriter(
             llm=self._get_llm_for_agent("document_writing", research_config),
+            config=self.config
+        )
+        agents["cover_letter_writer"] = CoverLetterWriter(
+            llm=self._get_llm_for_agent("cover_letter_writing", research_config),
             config=self.config
         )
         agents["quality_manager"] = QualityManager(
@@ -247,6 +252,21 @@ class ResumeAgentsGraph:
             
             for agent_key in team_agents:
                 agent_result_key = agent_key.replace("_analyst", "_analysis").replace("_researcher", "_research")
+                # 가이드 에이전트들의 특별한 키 매핑 처리
+                if agent_key == "question_guide":
+                    agent_result_key = "question_guides"
+                elif agent_key == "experience_guide":
+                    agent_result_key = "experience_guides"
+                elif agent_key == "writing_guide":
+                    agent_result_key = "writing_guides"
+                # production 에이전트들의 특별한 키 매핑 처리
+                elif agent_key == "document_writer":
+                    agent_result_key = "resume_writing"  # ResumeWriter로 변경됨에 따라 수정
+                elif agent_key == "cover_letter_writer":
+                    agent_result_key = "cover_letter_writing"
+                elif agent_key == "quality_manager":
+                    agent_result_key = "quality_assessment"
+                
                 if hasattr(state, 'analysis_results') and agent_result_key in state.analysis_results:
                     team_results[agent_result_key] = state.analysis_results[agent_result_key]
 
@@ -339,7 +359,7 @@ class ResumeAgentsGraph:
             "matching_team": ["candidate_analyst", "culture_analyst", "trend_analyst"],
             "strategy_team": ["strength_researcher", "weakness_researcher"],
             "guide_team": ["question_guide", "experience_guide", "writing_guide"],
-            "production_team": ["document_writer", "quality_manager"]
+            "production_team": ["document_writer", "cover_letter_writer", "quality_manager"]
         }
         return team_mapping.get(team_name, [])
 
@@ -403,7 +423,8 @@ class ResumeAgentsGraph:
         graph.add_node("guide_revision", self._create_stage_revision_node("guide_team"))
         
         # === Phase 5: Production Team (Document Creation) ===
-        graph.add_node("document_writing", self.agents["document_writer"].analyze)
+        graph.add_node("resume_writing", self.agents["document_writer"].analyze)
+        graph.add_node("cover_letter_writing", self.agents["cover_letter_writer"].analyze)
         graph.add_node("quality_management", self.agents["quality_manager"].analyze)
         
         # Production Phase Evaluation
@@ -481,12 +502,24 @@ class ResumeAgentsGraph:
             self._decide_workflow,
             {
                 "guide_only": END,
-                "create_document": "document_writing"
+                "create_document": "production_start"
+            }
+        )
+        
+        # Production entry: decide start node based on config
+        graph.add_node("production_start", lambda state: state)
+        graph.add_conditional_edges(
+            "production_start",
+            self._decide_production_entry,
+            {
+                "resume": "resume_writing",
+                "cover_letter": "cover_letter_writing"
             }
         )
         
         # Phase 5: Production Team (순차 실행 + 평가)
-        graph.add_edge("document_writing", "quality_management")
+        graph.add_edge("resume_writing", "cover_letter_writing")
+        graph.add_edge("cover_letter_writing", "quality_management")
         graph.add_edge("quality_management", "production_evaluation")
         
         # Production evaluation with revision loop
@@ -516,6 +549,19 @@ class ResumeAgentsGraph:
             self.log("📄 Document Creation 워크플로우 선택")
             return "create_document"
     
+    def _decide_production_entry(self, state: AgentState) -> str:
+        """Decide whether to start production at resume or cover letter based on document_type.
+        - resume: 이력서만 필요하거나 먼저 생성할 때
+        - cover_letter: 문항 답변만 생성하고 싶은 경우
+        """
+        doc_type = self.config.get("document_type", "resume").lower()
+        if doc_type == "cover_letter":
+            self.log("🧭 Production entry: cover_letter_writing")
+            return "cover_letter"
+        else:
+            self.log("🧭 Production entry: resume_writing")
+            return "resume"
+
     async def run(self, initial_state: AgentState) -> AgentState:
         """그래프를 실행합니다."""
         self.log("🚀 ResumeAgents 워크플로우 시작")
@@ -650,7 +696,7 @@ class ResumeAgentsGraph:
             print("❓ 질문 가이드 분석 시작")
         
         # 질문별 맞춤 컨텍스트 생성
-        questions = state.candidate_info.get("questions", [])
+        questions = state.candidate_info.get("custom_questions", [])
         question_context = " ".join([q.get("question", "") for q in questions])
         
         context = self._get_agent_context(

@@ -33,6 +33,11 @@ class AgentState(BaseModel):
     # 통합 벡터DB 컨텍스트 (임시 저장용)
     agent_context: Optional[Dict[str, Any]] = Field(default=None, exclude=True)
     
+    # 리비전 관련 필드
+    revision_feedback: Optional[List[str]] = Field(default=None, exclude=True)  # 리비전 피드백
+    is_revision: Optional[bool] = Field(default=False, exclude=True)  # 리비전 여부
+    revision_count: Optional[int] = Field(default=0, exclude=True)  # 리비전 횟수
+    
     class Config:
         arbitrary_types_allowed = True  # ProfileManager 같은 커스텀 타입 허용
 
@@ -170,7 +175,7 @@ class BaseAgent(ABC):
                         projects.append(data.get('name', ''))
                     elif entry_type == "skills":
                         for category, skill_list in data.items():
-                            if isinstance(skill_list, list):
+                            if isinstance(skill_list, list) and skill_list:
                                 skills.extend(skill_list[:2])  # 각 카테고리에서 2개씩
                 
                 if work_experiences:
@@ -193,9 +198,18 @@ class BaseAgent(ABC):
         if candidate_info.get("skills"):
             skills = candidate_info["skills"]
             all_skills = []
-            for skill_category in skills.values():
-                if isinstance(skill_category, list):
-                    all_skills.extend(skill_category[:2])
+            if isinstance(skills, dict):
+                # skills가 딕셔너리인 경우
+                for skill_category in skills.values():
+                    if isinstance(skill_category, list):
+                        all_skills.extend(skill_category[:2])
+            elif isinstance(skills, str):
+                # skills가 문자열인 경우
+                all_skills = [skills]
+            elif isinstance(skills, list):
+                # skills가 리스트인 경우
+                all_skills = skills[:3]
+            
             if all_skills:
                 summary_parts.append(f"기술: {', '.join(all_skills[:3])}")
         

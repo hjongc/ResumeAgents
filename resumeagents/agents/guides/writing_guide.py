@@ -69,7 +69,6 @@ Please provide comprehensive writing guidance for the following question:
 Company: {state.company_name}
 Position: {state.job_title}
 Question: {question['question']}
-Question Type: {question.get('type', 'general')}
 
 Previous Analysis:
 Question Guide: {question_guide if question_guide else "분석 정보 없음"}

@@ -54,15 +54,12 @@ Please provide analysis results in Korean language with structured JSON format. 
         # 이전 분석 결과 수집
         previous_analysis = state.analysis_results
         
-        questions = state.candidate_info.get("questions", [])  # custom_questions -> questions로 수정
+        questions = state.candidate_info.get("custom_questions", [])
         
         for question_data in questions:
             question = question_data.get("question", "")
             char_limit = question_data.get("char_limit")
             char_limit_note = question_data.get("char_limit_note", "")
-            
-            # 자동 질문 유형 분석
-            question_type = await self._analyze_question_type(question)
             
             # 벡터DB 기반 관련 경험 검색 (ProfileManager를 통해)
             relevant_experiences = []
@@ -72,7 +69,6 @@ Please provide analysis results in Korean language with structured JSON format. 
                     relevant_experiences = state.profile_manager.find_relevant_experiences_for_question(
                         profile_name=profile_name,
                         question=question,
-                        question_type=question_type,
                         top_k=3
                     )
                 except Exception as e:
@@ -82,13 +78,12 @@ Please provide analysis results in Korean language with structured JSON format. 
             # 벡터 검색 실패 시 state.candidate_info에서 직접 경험 정보 추출
             if not relevant_experiences:
                 relevant_experiences = self._extract_relevant_experiences_from_state(
-                    state, question, question_type
+                    state, question, "general"
                 )
             
             # 문항별 가이드 생성
             guide_result = await self._generate_question_guide(
                 question=question,
-                question_type=question_type,
                 char_limit=char_limit,
                 char_limit_note=char_limit_note,
                 company_info=company_info,
@@ -103,11 +98,10 @@ Please provide analysis results in Korean language with structured JSON format. 
             
             state.analysis_results["question_guides"]["guides"].append({
                 "question": question,
-                "question_type": question_type,
                 "char_limit": char_limit,
                 "char_limit_note": char_limit_note,
                 "guide": guide_result,
-                "relevant_experiences": relevant_experiences[:3]  # 상위 3개만 저장
+                "relevant_experiences": relevant_experiences[:3]
             })
         
         # 전체 요약 생성
@@ -133,28 +127,65 @@ Please provide analysis results in Korean language with structured JSON format. 
         
         # 경력 정보에서 관련 경험 추출
         work_experiences = candidate_info.get("work_experience", [])
+        # 예시 데이터에서는 자유서술형 문자열일 수 있음
+        if isinstance(work_experiences, str):
+            if work_experiences.strip():
+                work_experiences = [{
+                    "company": "(미상)",
+                    "position": "(미상)",
+                    "responsibilities": [work_experiences.strip()[:200]],
+                    "achievements": []
+                }]
+            else:
+                work_experiences = []
+        
+        # 자유서술형 전체 경력 텍스트가 따로 있을 수도 있음
+        if not work_experiences:
+            free_exp_text = candidate_info.get("experience")
+            if isinstance(free_exp_text, str) and free_exp_text.strip():
+                work_experiences = [{
+                    "company": "(미상)",
+                    "position": "(미상)",
+                    "responsibilities": [free_exp_text.strip()[:200]],
+                    "achievements": []
+                }]
+        
         for exp in work_experiences[:3]:  # 최대 3개
-            if exp.get("responsibilities") or exp.get("achievements"):
+            if isinstance(exp, dict) and (exp.get("responsibilities") or exp.get("achievements")):
                 relevant_experiences.append({
                     "type": "work_experience",
                     "company": exp.get("company", ""),
                     "position": exp.get("position", ""),
-                    "description": "; ".join(exp.get("responsibilities", [])[:2]),
-                    "achievements": "; ".join([a.get("description", "") for a in exp.get("achievements", [])[:1]]),
+                    "description": "; ".join(exp.get("responsibilities", [])[:2]) if isinstance(exp.get("responsibilities"), list) else str(exp.get("responsibilities", ""))[:200],
+                    "achievements": "; ".join([a.get("description", a) if isinstance(a, dict) else str(a) for a in exp.get("achievements", [])[:1]]),
                     "relevance_score": 0.7  # 기본 점수
                 })
         
         # 프로젝트 정보에서 관련 경험 추출
         projects = candidate_info.get("projects", [])
-        for proj in projects[:2]:  # 최대 2개
-            if proj.get("description") or proj.get("achievements"):
-                relevant_experiences.append({
-                    "type": "project",
-                    "name": proj.get("name", ""),
-                    "description": proj.get("description", "")[:200],
-                    "achievements": proj.get("achievements", "")[:200],
-                    "relevance_score": 0.6  # 기본 점수
+        if isinstance(projects, str):
+            text = projects.strip()
+            projects = []
+            if text:
+                projects.append({
+                    "name": "프로젝트",
+                    "description": text[:300],
+                    "achievements": "",
                 })
+        
+        if isinstance(projects, list):
+            for proj in projects[:2]:  # 최대 2개
+                if isinstance(proj, dict):
+                    desc = proj.get("description") or proj.get("details") or ""
+                    ach = proj.get("achievements") or ""
+                    if desc or ach:
+                        relevant_experiences.append({
+                            "type": "project",
+                            "name": proj.get("name", ""),
+                            "description": str(desc)[:200],
+                            "achievements": str(ach)[:200],
+                            "relevance_score": 0.6  # 기본 점수
+                        })
         
         return relevant_experiences
 
@@ -182,7 +213,7 @@ Please provide analysis results in Korean language with structured JSON format. 
         else:
             return "general"
 
-    async def _generate_question_guide(self, question: str, question_type: str, char_limit: int, 
+    async def _generate_question_guide(self, question: str, char_limit: int, 
                                      char_limit_note: str, company_info: Dict, previous_analysis: Dict,
                                      relevant_experiences: List[Dict], analysis_depth: str) -> str:
         """개별 문항에 대한 가이드 생성"""
@@ -207,7 +238,6 @@ Please provide analysis results in Korean language with structured JSON format. 
 
 === 문항 정보 ===
 질문: {question}
-질문 유형: {question_type}
 글자수 제한: {char_limit}자
 제한 참고사항: {char_limit_note}
 
@@ -244,9 +274,9 @@ Please provide analysis results in Korean language with structured JSON format. 
                                       previous_analysis: Dict) -> str:
         """전체 문항에 대한 종합 요약"""
         
-        questions_summary = ""
-        for i, guide_data in enumerate(question_guides, 1):
-            questions_summary += f"{i}. {guide_data['question'][:50]}... (유형: {guide_data['question_type']})\n"
+        questions_summary = "\n".join(
+            [f"{i}. {guide_data['question'][:50]}..." for i, guide_data in enumerate(question_guides, 1)]
+        )
         
         prompt = f"""
 다음 자기소개서 문항들에 대한 종합적인 전략을 제시해주세요:
