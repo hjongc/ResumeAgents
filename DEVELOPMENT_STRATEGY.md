@@ -156,10 +156,11 @@ profile_modes = {
 **Key Features**: Character limit optimization, experience matching via vector search
 
 ### 📝 Production Team (Document Creation)
-**Purpose**: Create final documents and ensure quality standards
-
-- **DocumentWriter**: Strategic document creation with guide integration
-- **QualityManager**: Multi-criteria quality evaluation and feedback
+- **Purpose**: Create final documents and ensure quality standards
+- Agents:
+  - `ResumeWriter` (기존 DocumentWriter 대체): 이력서 작성 전담
+  - `CoverLetterWriter` (신규): 문항별 자기소개서 작성 전담(제목+본문, 줄글 중심, 개인 서사 강화)
+  - `QualityManager`: 품질 평가 및 리비전 트리거
 
 **Key Features**: Multiple document formats, ATS optimization
 
@@ -352,6 +353,18 @@ def get_agent_context_advanced(profile_name, agent_type, task_context):
 - **JSON Response**: Structured evaluation with specific improvement suggestions
 - **Escalation**: If max revisions reached, continue with warning
 
+## 🔄 Workflow Design (Production Entry)
+- Guide 완료 후 사용자 선택에 따라 Production 단계로 진입
+- `production_start` 분기 노드 추가:
+  - document_type = `resume` → `resume_writing` → `cover_letter_writing` → `quality_management`
+  - document_type = `cover_letter` → `cover_letter_writing` → `quality_management`
+- 결과 저장 구조 업데이트:
+  - `analysis_results.json` (내부용 전체 결과)
+  - `summary.json` (요약)
+  - `cover_letter.txt` (문항별 자기소개서 합본)
+  - `cover_letters/cover_q{n}_{질문요약}.txt` (문항별 개별 텍스트)
+  - `guides/*.json` (question/experience/writing)
+
 ## ⚙️ Technology Stack
 
 ### Core Technologies
@@ -389,6 +402,6 @@ def get_agent_context_advanced(profile_name, agent_type, task_context):
 
 ---
 
-**Document Version**: 2.1  
+**Document Version**: 2.2  
 **Last Updated**: 2025-08-07  
 **Key Features**: Hybrid profile management, Optional vector DB integration, User mode selection, Graceful fallback system 

@@ -374,25 +374,21 @@ candidate_info = {
     "custom_questions": [
         {
             "question": "카카오에 지원한 동기와 입사 후 포부를 기술해 주십시오.",
-            "type": "motivation",
             "char_limit": 1000,
             "char_limit_note": "공백 포함 1000자 이내"
         },
         {
             "question": "데이터 사이언스 관련 프로젝트 중 가장 도전적이었던 경험과 해결 과정을 구체적으로 설명해 주세요.",
-            "type": "data_analysis",
             "char_limit": 1500,
             "char_limit_note": "공백 포함 1500자 이내"
         },
         {
             "question": "팀워크를 발휘하여 성과를 달성한 경험을 설명하고, 본인의 역할과 기여도를 기술해 주세요.",
-            "type": "teamwork",
             "char_limit": 800,
             "char_limit_note": "공백 포함 800자 이내"
         },
         {
             "question": "카카오의 데이터 사이언티스트로서 어떤 가치를 창출하고 싶은지 기술해 주세요.",
-            "type": "vision",
             "char_limit": 600,
             "char_limit_note": "공백 포함 600자 이내"
         }
@@ -429,7 +425,6 @@ print(f"결과 저장 위치: {final_state.output_dir}")
 results = pm_advanced.find_relevant_experiences_for_question(
     profile_name='김데이터_데이터사이언티스트_v2',
     question='Python을 사용한 대용량 데이터 처리 경험이 있나요?',
-    question_type='data_engineering',
     search_mode='hybrid',
     top_k=5
 )
@@ -482,7 +477,6 @@ for scenario in search_scenarios:
     results = pm_advanced.find_relevant_experiences_for_question(
         profile_name='김데이터_데이터사이언티스트_v2',
         question=scenario['question'],
-        question_type=scenario['type'],
         search_mode='hybrid',
         top_k=3
     )
@@ -509,7 +503,6 @@ def compare_search_modes(question, profile_name):
         results = pm_advanced.find_relevant_experiences_for_question(
             profile_name=profile_name,
             question=question,
-            question_type='data_analysis',
             search_mode=mode,
             top_k=3
         )
@@ -554,7 +547,7 @@ with open(latest_output / "question_guides.json", 'r', encoding='utf-8') as f:
 
 for i, guide in enumerate(question_guides['guides'], 1):
     print(f"\n📝 문항 {i}: {guide['question']['question']}")
-    print(f"   유형: {guide['question']['type']}")
+    # 문항 유형 필드는 제거되었습니다
     print(f"   글자수 제한: {guide['question'].get('char_limit', '제한 없음')}")
     print(f"   가이드 길이: {len(guide['guide'])}자")
     print(f"   핵심 포인트: {len(guide.get('key_points', []))}개")
